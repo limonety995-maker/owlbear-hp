@@ -3909,21 +3909,44 @@ function getEffectiveSize(token) {
   };
 }
 async function getTokenMetrics(token) {
+  const effectiveSize = getEffectiveSize(token);
+  let center = token.position;
+  let width = effectiveSize.width;
+  let height = effectiveSize.height;
   try {
     const bounds = await lib_default.scene.items.getItemBounds([token.id]);
     if (bounds?.width > 0 && bounds?.height > 0) {
-      return {
-        center: bounds.center,
-        width: bounds.width,
-        height: bounds.height
-      };
+      center = bounds.center;
+      width = bounds.width;
+      height = bounds.height;
     }
   } catch (error) {
     console.warn("[Body HP] Unable to read token bounds, using fallback size", error);
   }
+  let gridDpi = 0;
+  try {
+    gridDpi = await lib_default.scene.grid.getDpi();
+  } catch (error) {
+    console.warn("[Body HP] Unable to read grid dpi, using size fallback", error);
+  }
+  const scaleFactor = Math.max(
+    Math.abs(token.scale?.x ?? 1),
+    Math.abs(token.scale?.y ?? 1),
+    1
+  );
+  const markerSize = Math.max(
+    width,
+    height,
+    effectiveSize.width,
+    effectiveSize.height,
+    gridDpi * scaleFactor,
+    56
+  );
   return {
-    center: token.position,
-    ...getEffectiveSize(token)
+    center,
+    width,
+    height,
+    markerSize
   };
 }
 function getWorldPosition(token, center, offsetX, offsetY) {
@@ -3943,8 +3966,8 @@ function buildOverlayCard(token, data, metrics) {
 }
 function buildMinorDots(token, data, metrics) {
   const items = [];
-  const startX = -metrics.width / 2 + 12;
-  const y = metrics.height / 2 - 12;
+  const startX = -metrics.markerSize / 2 + 12;
+  const y = metrics.markerSize / 2 - 12;
   for (let index = 0; index < data.minor; index += 1) {
     items.push(
       buildShape().shapeType("CIRCLE").width(8).height(8).position(getWorldPosition(token, metrics.center, startX + index * 10, y)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#f59e0b").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).metadata({ [OVERLAY_KEY]: token.id, kind: "minor", index }).build()
@@ -3954,8 +3977,8 @@ function buildMinorDots(token, data, metrics) {
 }
 function buildSeriousBars(token, data, metrics) {
   const items = [];
-  const x = metrics.width / 2 - 12;
-  const startY = -metrics.height / 2 + 13;
+  const x = metrics.markerSize / 2 - 12;
+  const startY = -metrics.markerSize / 2 + 13;
   for (let index = 0; index < data.serious; index += 1) {
     items.push(
       buildShape().shapeType("RECTANGLE").width(4).height(18).position(getWorldPosition(token, metrics.center, x - index * 8, startY)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#ef4444").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).metadata({ [OVERLAY_KEY]: token.id, kind: "serious", index }).build()
