@@ -156,12 +156,12 @@ async function getTokenMetrics(token) {
     56,
   );
   const tokenRadius = visibleDiameter / 2;
-  const tokenGap = 1;
-  const torsoThickness = Math.max(6, visibleDiameter * 0.04);
+  const tokenGap = 0;
+  const torsoThickness = Math.max(5, visibleDiameter * 0.035);
   const torsoInnerRadius = tokenRadius + tokenGap;
   const torsoOuterRadius = torsoInnerRadius + torsoThickness;
-  const ringGap = 1;
-  const outerThickness = Math.max(10, visibleDiameter * 0.1);
+  const ringGap = 0;
+  const outerThickness = Math.max(8, visibleDiameter * 0.08);
   const outerInnerRadius = torsoOuterRadius + ringGap;
   const outerRadius = outerInnerRadius + outerThickness;
 
@@ -247,7 +247,7 @@ function buildRingItem(token, metrics, kind, commands, fillColor, zIndex = 0, fi
     .fillOpacity(1)
     .strokeColor(RING_COLORS.border)
     .strokeOpacity(1)
-    .strokeWidth(1)
+    .strokeWidth(0.75)
     .position(metrics.center)
     .rotation(0)
     .zIndex(Date.now() + zIndex)
