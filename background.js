@@ -10,6 +10,8 @@ import {
 
 const EXTENSION_MENU_ID = "com.codex.body-hp/context-menu";
 let currentRole = "PLAYER";
+const ADD_ICON_URL = new URL("./add.svg", import.meta.url).href;
+const REMOVE_ICON_URL = new URL("./remove.svg", import.meta.url).href;
 
 async function updateBadge() {
   try {
@@ -46,7 +48,7 @@ async function setupContextMenu() {
     roles: ["GM"],
     icons: [
       {
-        icon: "/add.svg",
+        icon: ADD_ICON_URL,
         label: "Track Body HP",
         filter: {
           every: [
@@ -56,7 +58,7 @@ async function setupContextMenu() {
         },
       },
       {
-        icon: "/remove.svg",
+        icon: REMOVE_ICON_URL,
         label: "Remove Body HP",
         filter: {
           every: [{ key: "layer", value: "CHARACTER" }],
