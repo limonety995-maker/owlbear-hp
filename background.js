@@ -6,7 +6,7 @@ import {
   isTrackedCharacter,
   setTrackedState,
   syncTrackedOverlays,
-} from "./shared.js?v=1.0.1";
+} from "./shared.js?v=1.0.2";
 
 const EXTENSION_MENU_ID = "com.codex.body-hp/context-menu";
 let currentRole = "PLAYER";
