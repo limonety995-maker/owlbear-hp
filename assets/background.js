@@ -3481,13 +3481,10 @@ var GenericItemBuilder = class {
   }
 };
 
-// node_modules/@owlbear-rodeo/sdk/lib/builders/ImageBuilder.js
-var ImageBuilder = class extends GenericItemBuilder {
-  constructor(player, image, grid) {
+// node_modules/@owlbear-rodeo/sdk/lib/builders/LabelBuilder.js
+var LabelBuilder = class extends GenericItemBuilder {
+  constructor(player) {
     super(player);
-    this._image = image;
-    this._grid = grid;
-    this._item.name = "Image";
     this._text = {
       richText: [
         {
@@ -3499,10 +3496,10 @@ var ImageBuilder = class extends GenericItemBuilder {
       style: {
         padding: 8,
         fontFamily: "Roboto",
-        fontSize: 24,
+        fontSize: 16,
         fontWeight: 400,
         textAlign: "CENTER",
-        textAlignVertical: "BOTTOM",
+        textAlignVertical: "MIDDLE",
         fillColor: "white",
         fillOpacity: 1,
         strokeColor: "white",
@@ -3514,37 +3511,34 @@ var ImageBuilder = class extends GenericItemBuilder {
       width: "AUTO",
       height: "AUTO"
     };
-    this._textItemType = "LABEL";
+    this._style = {
+      backgroundColor: "#3D4051",
+      backgroundOpacity: 1,
+      cornerRadius: 8,
+      pointerDirection: "DOWN",
+      pointerWidth: 4,
+      pointerHeight: 4
+    };
+    this._item.layer = "TEXT";
+    this._item.name = "Label";
   }
   text(text) {
     this._text = text;
     return this.self();
   }
-  textItemType(textItemType) {
-    this._textItemType = textItemType;
-    return this.self();
-  }
-  textWidth(width) {
+  width(width) {
     this._text.width = width;
     return this.self();
   }
-  textHeight(height) {
+  height(height) {
     this._text.height = height;
-    return this.self();
-  }
-  richText(richText) {
-    this._text.richText = richText;
     return this.self();
   }
   plainText(plainText) {
     this._text.plainText = plainText;
     return this.self();
   }
-  textType(textType) {
-    this._text.type = textType;
-    return this.self();
-  }
-  textPadding(padding) {
+  padding(padding) {
     this._text.style.padding = padding;
     return this.self();
   }
@@ -3568,32 +3562,126 @@ var ImageBuilder = class extends GenericItemBuilder {
     this._text.style.textAlignVertical = textAlignVertical;
     return this.self();
   }
-  textFillColor(fillColor) {
+  fillColor(fillColor) {
     this._text.style.fillColor = fillColor;
     return this.self();
   }
-  textFillOpacity(fillOpacity) {
+  fillOpacity(fillOpacity) {
     this._text.style.fillOpacity = fillOpacity;
     return this.self();
   }
-  textStrokeColor(strokeColor) {
+  strokeColor(strokeColor) {
     this._text.style.strokeColor = strokeColor;
     return this.self();
   }
-  textStrokeOpacity(strokeOpacity) {
+  strokeOpacity(strokeOpacity) {
     this._text.style.strokeOpacity = strokeOpacity;
     return this.self();
   }
-  textStrokeWidth(strokeWidth) {
+  strokeWidth(strokeWidth) {
     this._text.style.strokeWidth = strokeWidth;
     return this.self();
   }
-  textLineHeight(lineHeight) {
+  lineHeight(lineHeight) {
     this._text.style.lineHeight = lineHeight;
     return this.self();
   }
+  style(style) {
+    this._style = style;
+    return this.self();
+  }
+  backgroundColor(backgroundColor) {
+    this._style.backgroundColor = backgroundColor;
+    return this.self();
+  }
+  backgroundOpacity(backgroundOpacity) {
+    this._style.backgroundOpacity = backgroundOpacity;
+    return this.self();
+  }
+  cornerRadius(cornerRadius) {
+    this._style.cornerRadius = cornerRadius;
+    return this.self();
+  }
+  pointerWidth(pointerWidth) {
+    this._style.pointerWidth = pointerWidth;
+    return this.self();
+  }
+  pointerHeight(pointerHeight) {
+    this._style.pointerHeight = pointerHeight;
+    return this.self();
+  }
+  pointerDirection(pointerDirection) {
+    this._style.pointerDirection = pointerDirection;
+    return this.self();
+  }
+  maxViewScale(maxViewScale) {
+    this._style.maxViewScale = maxViewScale;
+    return this.self();
+  }
+  minViewScale(minViewScale) {
+    this._style.minViewScale = minViewScale;
+    return this.self();
+  }
   build() {
-    return Object.assign(Object.assign({}, this._item), { type: "IMAGE", image: this._image, grid: this._grid, text: this._text, textItemType: this._textItemType });
+    return Object.assign(Object.assign({}, this._item), { type: "LABEL", text: this._text, style: this._style });
+  }
+};
+
+// node_modules/@owlbear-rodeo/sdk/lib/builders/PathBuilder.js
+var PathBuilder = class extends GenericItemBuilder {
+  constructor(player) {
+    super(player);
+    this._commands = [];
+    this._fillRule = "nonzero";
+    this._style = {
+      fillColor: "black",
+      fillOpacity: 1,
+      strokeColor: "white",
+      strokeOpacity: 1,
+      strokeWidth: 5,
+      strokeDash: []
+    };
+    this._item.name = "Path";
+    this._item.layer = "DRAWING";
+  }
+  commands(commands) {
+    this._commands = commands;
+    return this.self();
+  }
+  fillRule(fillRule) {
+    this._fillRule = fillRule;
+    return this.self();
+  }
+  style(style) {
+    this._style = style;
+    return this.self();
+  }
+  fillColor(fillColor) {
+    this._style.fillColor = fillColor;
+    return this.self();
+  }
+  fillOpacity(fillOpacity) {
+    this._style.fillOpacity = fillOpacity;
+    return this.self();
+  }
+  strokeColor(strokeColor) {
+    this._style.strokeColor = strokeColor;
+    return this.self();
+  }
+  strokeOpacity(strokeOpacity) {
+    this._style.strokeOpacity = strokeOpacity;
+    return this.self();
+  }
+  strokeWidth(strokeWidth) {
+    this._style.strokeWidth = strokeWidth;
+    return this.self();
+  }
+  strokeDash(strokeDash) {
+    this._style.strokeDash = strokeDash;
+    return this.self();
+  }
+  build() {
+    return Object.assign(Object.assign({}, this._item), { type: "PATH", commands: this._commands, fillRule: this._fillRule, style: this._style });
   }
 };
 
@@ -3730,8 +3818,11 @@ var OBR = {
   /** True if the current site is embedded in an instance of Owlbear Rodeo */
   isAvailable: Boolean(details.origin)
 };
-function buildImage(image, grid) {
-  return new ImageBuilder(playerApi, image, grid);
+function buildLabel() {
+  return new LabelBuilder(playerApi);
+}
+function buildPath() {
+  return new PathBuilder(playerApi);
 }
 var lib_default = OBR;
 
@@ -3740,28 +3831,21 @@ var EXTENSION_ID = "com.codex.body-hp";
 var META_KEY = `${EXTENSION_ID}/data`;
 var OVERLAY_KEY = `${EXTENSION_ID}/overlayFor`;
 var BODY_ORDER = ["L.Arm", "Head", "R.Arm", "L.Leg", "Torso", "R.Leg"];
-var SVG_SIZE = 512;
-var SVG_CENTER = SVG_SIZE / 2;
-var OUTER_RADIUS = 244;
-var INNER_RADIUS = 170;
-var TEXT_RADIUS = (OUTER_RADIUS + INNER_RADIUS) / 2;
-var SECTOR_HALF_SPAN = 26;
 var RING_COLORS = {
   full: "#73FF5A",
   half: "#FFAF22",
   kaputt: "#FF460D",
-  border: "#2A1200",
-  shadow: "rgba(0, 0, 0, 0.24)",
-  text: "#0A0F12",
-  textStroke: "rgba(255, 255, 255, 0.72)"
+  border: "#251105",
+  text: "#0C1015",
+  textStroke: "rgba(255, 255, 255, 0.78)"
 };
 var BODY_RING_LAYOUT = [
-  { part: "Head", angle: -90 },
-  { part: "R.Arm", angle: -30 },
-  { part: "R.Leg", angle: 30 },
-  { part: "Torso", angle: 90 },
-  { part: "L.Leg", angle: 150 },
-  { part: "L.Arm", angle: 210 }
+  { part: "Head", angle: -90, span: 40 },
+  { part: "R.Arm", angle: -30, span: 38 },
+  { part: "R.Leg", angle: 34, span: 38 },
+  { part: "Torso", angle: 90, span: 52 },
+  { part: "L.Leg", angle: 146, span: 38 },
+  { part: "L.Arm", angle: 210, span: 38 }
 ];
 var BODY_DEFAULTS = {
   "L.Arm": { current: 2, max: 2, armor: 2 },
@@ -3862,121 +3946,77 @@ async function getTokenMetrics(token) {
     gridDpi * scaleFactor,
     56
   );
+  const outerRadius = visibleDiameter * 0.76;
+  const ringThickness = Math.max(24, visibleDiameter * 0.22);
   return {
     center,
     width,
     height,
-    gridDpi,
     visibleDiameter,
-    overlayDiameter: visibleDiameter * 1.52
+    outerRadius,
+    innerRadius: outerRadius - ringThickness,
+    textRadius: outerRadius - ringThickness / 2
   };
 }
-function toPolarPoint(radius, angle) {
+function polar(radius, angle) {
   const radians = angle * Math.PI / 180;
   return {
-    x: SVG_CENTER + radius * Math.cos(radians),
-    y: SVG_CENTER + radius * Math.sin(radians)
+    x: radius * Math.cos(radians),
+    y: radius * Math.sin(radians)
   };
 }
-function describeSectorPath(startAngle, endAngle) {
-  const outerStart = toPolarPoint(OUTER_RADIUS, startAngle);
-  const outerEnd = toPolarPoint(OUTER_RADIUS, endAngle);
-  const innerEnd = toPolarPoint(INNER_RADIUS, endAngle);
-  const innerStart = toPolarPoint(INNER_RADIUS, startAngle);
-  const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
-  return [
-    `M ${outerStart.x.toFixed(2)} ${outerStart.y.toFixed(2)}`,
-    `A ${OUTER_RADIUS} ${OUTER_RADIUS} 0 ${largeArcFlag} 1 ${outerEnd.x.toFixed(2)} ${outerEnd.y.toFixed(2)}`,
-    `L ${innerEnd.x.toFixed(2)} ${innerEnd.y.toFixed(2)}`,
-    `A ${INNER_RADIUS} ${INNER_RADIUS} 0 ${largeArcFlag} 0 ${innerStart.x.toFixed(2)} ${innerStart.y.toFixed(2)}`,
-    "Z"
-  ].join(" ");
+function arcPoints(radius, startAngle, endAngle, segments = 10) {
+  const points = [];
+  for (let index = 0; index <= segments; index += 1) {
+    const ratio = index / segments;
+    const angle = startAngle + (endAngle - startAngle) * ratio;
+    points.push(polar(radius, angle));
+  }
+  return points;
 }
 function getPartColor(part) {
-  if (part.current <= 0 || part.max <= 0) return RING_COLORS.kaputt;
+  if (part.max <= 0 || part.current <= 0) return RING_COLORS.kaputt;
   if (part.current < part.max) return RING_COLORS.half;
   return RING_COLORS.full;
 }
-function escapeXml(value) {
-  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
+function buildSectorCommands(radiusOuter, radiusInner, centerAngle, spanAngle) {
+  const startAngle = centerAngle - spanAngle / 2;
+  const endAngle = centerAngle + spanAngle / 2;
+  const outer = arcPoints(radiusOuter, startAngle, endAngle, 8);
+  const inner = arcPoints(radiusInner, endAngle, startAngle, 8);
+  const commands = [[Command.MOVE, outer[0].x, outer[0].y]];
+  for (const point of outer.slice(1)) {
+    commands.push([Command.LINE, point.x, point.y]);
+  }
+  for (const point of inner) {
+    commands.push([Command.LINE, point.x, point.y]);
+  }
+  commands.push([Command.CLOSE]);
+  return commands;
 }
-function buildRingSvg(data) {
-  const sectors = BODY_RING_LAYOUT.map(({ part, angle }) => {
-    const bodyPart = data.body[part];
-    const path = describeSectorPath(angle - SECTOR_HALF_SPAN, angle + SECTOR_HALF_SPAN);
-    const textPoint = toPolarPoint(TEXT_RADIUS, angle);
-    const label = `${bodyPart.current}/${bodyPart.max}`;
-    return `
-      <path
-        d="${path}"
-        fill="${getPartColor(bodyPart)}"
-        stroke="${RING_COLORS.border}"
-        stroke-width="6"
-        stroke-linejoin="round"
-      />
-      <text
-        x="${textPoint.x.toFixed(2)}"
-        y="${textPoint.y.toFixed(2)}"
-        text-anchor="middle"
-        dominant-baseline="middle"
-        font-family="Segoe UI, Arial, sans-serif"
-        font-size="30"
-        font-weight="800"
-        fill="${RING_COLORS.text}"
-        stroke="${RING_COLORS.textStroke}"
-        stroke-width="6"
-        paint-order="stroke"
-      >${escapeXml(label)}</text>
-    `;
-  }).join("");
-  return `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${SVG_SIZE}" height="${SVG_SIZE}" viewBox="0 0 ${SVG_SIZE} ${SVG_SIZE}">
-      <defs>
-        <filter id="ringShadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="${RING_COLORS.shadow}" />
-        </filter>
-      </defs>
-      <g filter="url(#ringShadow)">
-        ${sectors}
-        <circle
-          cx="${SVG_CENTER}"
-          cy="${SVG_CENTER}"
-          r="${OUTER_RADIUS - 2}"
-          fill="none"
-          stroke="${RING_COLORS.border}"
-          stroke-width="4"
-        />
-        <circle
-          cx="${SVG_CENTER}"
-          cy="${SVG_CENTER}"
-          r="${INNER_RADIUS + 2}"
-          fill="none"
-          stroke="${RING_COLORS.border}"
-          stroke-width="4"
-        />
-      </g>
-    </svg>
-  `.trim();
+function buildSectorPath(token, partName, partData, metrics, angle, span) {
+  return buildPath().name(`${partName}: ${getCharacterName(token)}`).commands(
+    buildSectorCommands(metrics.outerRadius, metrics.innerRadius, angle, span)
+  ).fillColor(getPartColor(partData)).fillOpacity(0.96).strokeColor(RING_COLORS.border).strokeOpacity(1).strokeWidth(6).position(metrics.center).rotation(0).attachedTo(token.id).disableAttachmentBehavior(["ROTATION"]).layer("ATTACHMENT").locked(true).disableHit(true).metadata({ [OVERLAY_KEY]: token.id, kind: "body-sector", part: partName }).build();
 }
-function buildRingOverlay(token, data, metrics) {
-  const svg = buildRingSvg(data);
-  const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-  const imageDpi = SVG_SIZE * metrics.gridDpi / metrics.overlayDiameter;
-  return buildImage(
-    {
-      width: SVG_SIZE,
-      height: SVG_SIZE,
-      mime: "image/svg+xml",
-      url: dataUrl
-    },
-    {
-      offset: { x: 0, y: 0 },
-      dpi: imageDpi
-    }
-  ).name(`Body Ring: ${getCharacterName(token)}`).position(metrics.center).rotation(0).attachedTo(token.id).disableAttachmentBehavior(["ROTATION"]).layer("ATTACHMENT").locked(true).disableHit(true).metadata({ [OVERLAY_KEY]: token.id, kind: "body-ring" }).build();
+function buildValueLabel(token, partName, partData, metrics, angle) {
+  const point = polar(metrics.textRadius, angle);
+  const labelSize = Math.max(54, metrics.visibleDiameter * 0.22);
+  return buildLabel().name(`${partName} Value: ${getCharacterName(token)}`).plainText(`${partData.current}/${partData.max}`).width(labelSize).height(28).padding(0).fontSize(Math.max(13, Math.round(metrics.visibleDiameter * 0.09))).fontWeight(800).lineHeight(1).textAlign("CENTER").textAlignVertical("MIDDLE").fillColor(RING_COLORS.text).backgroundColor("#000000").backgroundOpacity(0).strokeColor(RING_COLORS.textStroke).strokeOpacity(1).strokeWidth(0).position({
+    x: metrics.center.x + point.x,
+    y: metrics.center.y + point.y
+  }).rotation(0).attachedTo(token.id).disableAttachmentBehavior(["ROTATION"]).layer("ATTACHMENT").locked(true).disableHit(true).metadata({ [OVERLAY_KEY]: token.id, kind: "body-value", part: partName }).build();
 }
 function buildOverlayItems(token, data, metrics) {
-  return [buildRingOverlay(token, data, metrics)];
+  const items = [];
+  for (const layout of BODY_RING_LAYOUT) {
+    const partData = data.body[layout.part];
+    items.push(
+      buildSectorPath(token, layout.part, partData, metrics, layout.angle, layout.span)
+    );
+    items.push(buildValueLabel(token, layout.part, partData, metrics, layout.angle));
+  }
+  return items;
 }
 async function updateTrackerData(tokenId, updater) {
   await lib_default.scene.items.updateItems([tokenId], (items) => {

@@ -1,4 +1,4 @@
-import OBR, { buildImage, isImage } from "@owlbear-rodeo/sdk";
+import OBR, { Command, buildLabel, buildPath, isImage } from "@owlbear-rodeo/sdk";
 
 export { OBR };
 
@@ -7,28 +7,22 @@ export const META_KEY = `${EXTENSION_ID}/data`;
 export const OVERLAY_KEY = `${EXTENSION_ID}/overlayFor`;
 export const BODY_ORDER = ["L.Arm", "Head", "R.Arm", "L.Leg", "Torso", "R.Leg"];
 
-const SVG_SIZE = 512;
-const SVG_CENTER = SVG_SIZE / 2;
-const OUTER_RADIUS = 244;
-const INNER_RADIUS = 170;
-const TEXT_RADIUS = (OUTER_RADIUS + INNER_RADIUS) / 2;
-const SECTOR_HALF_SPAN = 26;
 const RING_COLORS = {
   full: "#73FF5A",
   half: "#FFAF22",
   kaputt: "#FF460D",
-  border: "#2A1200",
-  shadow: "rgba(0, 0, 0, 0.24)",
-  text: "#0A0F12",
-  textStroke: "rgba(255, 255, 255, 0.72)",
+  border: "#251105",
+  text: "#0C1015",
+  textStroke: "rgba(255, 255, 255, 0.78)",
 };
+
 const BODY_RING_LAYOUT = [
-  { part: "Head", angle: -90 },
-  { part: "R.Arm", angle: -30 },
-  { part: "R.Leg", angle: 30 },
-  { part: "Torso", angle: 90 },
-  { part: "L.Leg", angle: 150 },
-  { part: "L.Arm", angle: 210 },
+  { part: "Head", angle: -90, span: 40 },
+  { part: "R.Arm", angle: -30, span: 38 },
+  { part: "R.Leg", angle: 34, span: 38 },
+  { part: "Torso", angle: 90, span: 52 },
+  { part: "L.Leg", angle: 146, span: 38 },
+  { part: "L.Arm", angle: 210, span: 38 },
 ];
 
 export const BODY_DEFAULTS = {
@@ -172,135 +166,74 @@ async function getTokenMetrics(token) {
     gridDpi * scaleFactor,
     56,
   );
+  const outerRadius = visibleDiameter * 0.76;
+  const ringThickness = Math.max(24, visibleDiameter * 0.22);
 
   return {
     center,
     width,
     height,
-    gridDpi,
     visibleDiameter,
-    overlayDiameter: visibleDiameter * 1.52,
+    outerRadius,
+    innerRadius: outerRadius - ringThickness,
+    textRadius: outerRadius - ringThickness / 2,
   };
 }
 
-function toPolarPoint(radius, angle) {
+function polar(radius, angle) {
   const radians = (angle * Math.PI) / 180;
   return {
-    x: SVG_CENTER + radius * Math.cos(radians),
-    y: SVG_CENTER + radius * Math.sin(radians),
+    x: radius * Math.cos(radians),
+    y: radius * Math.sin(radians),
   };
 }
 
-function describeSectorPath(startAngle, endAngle) {
-  const outerStart = toPolarPoint(OUTER_RADIUS, startAngle);
-  const outerEnd = toPolarPoint(OUTER_RADIUS, endAngle);
-  const innerEnd = toPolarPoint(INNER_RADIUS, endAngle);
-  const innerStart = toPolarPoint(INNER_RADIUS, startAngle);
-  const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
-
-  return [
-    `M ${outerStart.x.toFixed(2)} ${outerStart.y.toFixed(2)}`,
-    `A ${OUTER_RADIUS} ${OUTER_RADIUS} 0 ${largeArcFlag} 1 ${outerEnd.x.toFixed(2)} ${outerEnd.y.toFixed(2)}`,
-    `L ${innerEnd.x.toFixed(2)} ${innerEnd.y.toFixed(2)}`,
-    `A ${INNER_RADIUS} ${INNER_RADIUS} 0 ${largeArcFlag} 0 ${innerStart.x.toFixed(2)} ${innerStart.y.toFixed(2)}`,
-    "Z",
-  ].join(" ");
+function arcPoints(radius, startAngle, endAngle, segments = 10) {
+  const points = [];
+  for (let index = 0; index <= segments; index += 1) {
+    const ratio = index / segments;
+    const angle = startAngle + (endAngle - startAngle) * ratio;
+    points.push(polar(radius, angle));
+  }
+  return points;
 }
 
 function getPartColor(part) {
-  if (part.current <= 0 || part.max <= 0) return RING_COLORS.kaputt;
+  if (part.max <= 0 || part.current <= 0) return RING_COLORS.kaputt;
   if (part.current < part.max) return RING_COLORS.half;
   return RING_COLORS.full;
 }
 
-function escapeXml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&apos;");
+function buildSectorCommands(radiusOuter, radiusInner, centerAngle, spanAngle) {
+  const startAngle = centerAngle - spanAngle / 2;
+  const endAngle = centerAngle + spanAngle / 2;
+  const outer = arcPoints(radiusOuter, startAngle, endAngle, 8);
+  const inner = arcPoints(radiusInner, endAngle, startAngle, 8);
+  const commands = [[Command.MOVE, outer[0].x, outer[0].y]];
+
+  for (const point of outer.slice(1)) {
+    commands.push([Command.LINE, point.x, point.y]);
+  }
+
+  for (const point of inner) {
+    commands.push([Command.LINE, point.x, point.y]);
+  }
+
+  commands.push([Command.CLOSE]);
+  return commands;
 }
 
-function buildRingSvg(data) {
-  const sectors = BODY_RING_LAYOUT.map(({ part, angle }) => {
-    const bodyPart = data.body[part];
-    const path = describeSectorPath(angle - SECTOR_HALF_SPAN, angle + SECTOR_HALF_SPAN);
-    const textPoint = toPolarPoint(TEXT_RADIUS, angle);
-    const label = `${bodyPart.current}/${bodyPart.max}`;
-
-    return `
-      <path
-        d="${path}"
-        fill="${getPartColor(bodyPart)}"
-        stroke="${RING_COLORS.border}"
-        stroke-width="6"
-        stroke-linejoin="round"
-      />
-      <text
-        x="${textPoint.x.toFixed(2)}"
-        y="${textPoint.y.toFixed(2)}"
-        text-anchor="middle"
-        dominant-baseline="middle"
-        font-family="Segoe UI, Arial, sans-serif"
-        font-size="30"
-        font-weight="800"
-        fill="${RING_COLORS.text}"
-        stroke="${RING_COLORS.textStroke}"
-        stroke-width="6"
-        paint-order="stroke"
-      >${escapeXml(label)}</text>
-    `;
-  }).join("");
-
-  return `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${SVG_SIZE}" height="${SVG_SIZE}" viewBox="0 0 ${SVG_SIZE} ${SVG_SIZE}">
-      <defs>
-        <filter id="ringShadow" x="-20%" y="-20%" width="140%" height="140%">
-          <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="${RING_COLORS.shadow}" />
-        </filter>
-      </defs>
-      <g filter="url(#ringShadow)">
-        ${sectors}
-        <circle
-          cx="${SVG_CENTER}"
-          cy="${SVG_CENTER}"
-          r="${OUTER_RADIUS - 2}"
-          fill="none"
-          stroke="${RING_COLORS.border}"
-          stroke-width="4"
-        />
-        <circle
-          cx="${SVG_CENTER}"
-          cy="${SVG_CENTER}"
-          r="${INNER_RADIUS + 2}"
-          fill="none"
-          stroke="${RING_COLORS.border}"
-          stroke-width="4"
-        />
-      </g>
-    </svg>
-  `.trim();
-}
-
-function buildRingOverlay(token, data, metrics) {
-  const svg = buildRingSvg(data);
-  const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-  const imageDpi = (SVG_SIZE * metrics.gridDpi) / metrics.overlayDiameter;
-
-  return buildImage(
-    {
-      width: SVG_SIZE,
-      height: SVG_SIZE,
-      mime: "image/svg+xml",
-      url: dataUrl,
-    },
-    {
-      offset: { x: 0, y: 0 },
-      dpi: imageDpi,
-    },
-  )
-    .name(`Body Ring: ${getCharacterName(token)}`)
+function buildSectorPath(token, partName, partData, metrics, angle, span) {
+  return buildPath()
+    .name(`${partName}: ${getCharacterName(token)}`)
+    .commands(
+      buildSectorCommands(metrics.outerRadius, metrics.innerRadius, angle, span),
+    )
+    .fillColor(getPartColor(partData))
+    .fillOpacity(0.96)
+    .strokeColor(RING_COLORS.border)
+    .strokeOpacity(1)
+    .strokeWidth(6)
     .position(metrics.center)
     .rotation(0)
     .attachedTo(token.id)
@@ -308,12 +241,57 @@ function buildRingOverlay(token, data, metrics) {
     .layer("ATTACHMENT")
     .locked(true)
     .disableHit(true)
-    .metadata({ [OVERLAY_KEY]: token.id, kind: "body-ring" })
+    .metadata({ [OVERLAY_KEY]: token.id, kind: "body-sector", part: partName })
+    .build();
+}
+
+function buildValueLabel(token, partName, partData, metrics, angle) {
+  const point = polar(metrics.textRadius, angle);
+  const labelSize = Math.max(54, metrics.visibleDiameter * 0.22);
+
+  return buildLabel()
+    .name(`${partName} Value: ${getCharacterName(token)}`)
+    .plainText(`${partData.current}/${partData.max}`)
+    .width(labelSize)
+    .height(28)
+    .padding(0)
+    .fontSize(Math.max(13, Math.round(metrics.visibleDiameter * 0.09)))
+    .fontWeight(800)
+    .lineHeight(1)
+    .textAlign("CENTER")
+    .textAlignVertical("MIDDLE")
+    .fillColor(RING_COLORS.text)
+    .backgroundColor("#000000")
+    .backgroundOpacity(0)
+    .strokeColor(RING_COLORS.textStroke)
+    .strokeOpacity(1)
+    .strokeWidth(0)
+    .position({
+      x: metrics.center.x + point.x,
+      y: metrics.center.y + point.y,
+    })
+    .rotation(0)
+    .attachedTo(token.id)
+    .disableAttachmentBehavior(["ROTATION"])
+    .layer("ATTACHMENT")
+    .locked(true)
+    .disableHit(true)
+    .metadata({ [OVERLAY_KEY]: token.id, kind: "body-value", part: partName })
     .build();
 }
 
 export function buildOverlayItems(token, data, metrics) {
-  return [buildRingOverlay(token, data, metrics)];
+  const items = [];
+
+  for (const layout of BODY_RING_LAYOUT) {
+    const partData = data.body[layout.part];
+    items.push(
+      buildSectorPath(token, layout.part, partData, metrics, layout.angle, layout.span),
+    );
+    items.push(buildValueLabel(token, layout.part, partData, metrics, layout.angle));
+  }
+
+  return items;
 }
 
 export async function updateTrackerData(tokenId, updater) {
