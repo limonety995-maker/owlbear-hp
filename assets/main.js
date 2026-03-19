@@ -3810,11 +3810,11 @@ async function getTokenMetrics(token) {
     56
   );
   const outerRadius = visibleDiameter * 0.78;
-  const outerThickness = Math.max(16, visibleDiameter * 0.16);
+  const outerThickness = Math.max(12, visibleDiameter * 0.12);
   const outerInnerRadius = outerRadius - outerThickness;
   const ringGap = Math.max(6, visibleDiameter * 0.035);
   const torsoOuterRadius = outerInnerRadius - ringGap;
-  const torsoThickness = Math.max(10, visibleDiameter * 0.075);
+  const torsoThickness = Math.max(7, visibleDiameter * 0.05);
   const torsoInnerRadius = torsoOuterRadius - torsoThickness;
   return {
     center,
@@ -3877,7 +3877,7 @@ function getPartColor(part) {
   return RING_COLORS.full;
 }
 function buildRingItem(token, metrics, kind, commands, fillColor, zIndex = 0, fillRule = "nonzero") {
-  return buildPath().name(`${kind}: ${getCharacterName(token)}`).commands(commands).fillRule(fillRule).fillColor(fillColor).fillOpacity(1).strokeColor(RING_COLORS.border).strokeOpacity(1).strokeWidth(2).position(metrics.center).rotation(0).zIndex(Date.now() + zIndex).attachedTo(token.id).disableAttachmentBehavior(["ROTATION"]).layer("ATTACHMENT").locked(true).disableHit(true).metadata({
+  return buildPath().name(`${kind}: ${getCharacterName(token)}`).commands(commands).fillRule(fillRule).fillColor(fillColor).fillOpacity(1).strokeColor(RING_COLORS.border).strokeOpacity(1).strokeWidth(1).position(metrics.center).rotation(0).zIndex(Date.now() + zIndex).attachedTo(token.id).disableAttachmentBehavior(["ROTATION"]).layer("ATTACHMENT").locked(true).disableHit(true).metadata({
     [OVERLAY_KEY]: token.id,
     kind,
     visualVersion: VISUAL_VERSION
@@ -3973,17 +3973,16 @@ async function setTrackedState(tokenId, enabled) {
 }
 async function syncTrackedOverlays() {
   const items = await lib_default.scene.items.getItems();
-  const byId = new Map(items.map((item) => [item.id, item]));
-  const staleOverlayIds = items.filter(isOverlayItem).filter((item) => {
-    const token = byId.get(item.metadata[OVERLAY_KEY]);
-    return !token || !isTrackedCharacter(token);
-  }).map((item) => item.id);
-  if (staleOverlayIds.length) {
-    await lib_default.scene.items.deleteItems(staleOverlayIds);
-  }
   const trackedTokens = items.filter(isTrackedCharacter);
+  const overlayIds = items.filter(isOverlayItem).map((item) => item.id);
+  if (overlayIds.length) {
+    await lib_default.scene.items.deleteItems(overlayIds);
+  }
   for (const token of trackedTokens) {
-    await ensureOverlayForToken(token.id, items);
+    const metrics = await getTokenMetrics(token);
+    await lib_default.scene.items.addItems(
+      buildOverlayItems(token, getTrackerData(token), metrics)
+    );
   }
 }
 
