@@ -59,7 +59,10 @@ async function setupContextMenu() {
         icon: "/remove.svg",
         label: "Remove Body HP",
         filter: {
-          every: [{ key: "layer", value: "CHARACTER" }],
+          every: [
+            { key: "layer", value: "CHARACTER" },
+            { key: ["metadata", META_KEY, "enabled"], value: true },
+          ],
         },
       },
     ],
@@ -82,8 +85,19 @@ OBR.onReady(async () => {
       await syncTrackedOverlays();
     }
 
+    let syncQueued = false;
+
     OBR.scene.items.onChange(() => {
       void updateBadge();
+
+      if (currentRole !== "GM" || syncQueued) return;
+      syncQueued = true;
+      queueMicrotask(() => {
+        syncQueued = false;
+        void syncTrackedOverlays().catch((error) => {
+          console.warn("[Body HP] Overlay sync failed", error);
+        });
+      });
     });
 
     OBR.player.onChange(async () => {
