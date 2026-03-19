@@ -11,19 +11,22 @@
       <header class="topbar">
         <div>
           <h1>Body HP Tracker</h1>
-          <p class="sub">Выдели токен и редактируй повреждения прямо в окне расширения.</p>
+          <p class="sub">ПКМ по токену → включить/выключить трекер. Потом редактируй значения в списке ниже.</p>
         </div>
         <div id="roleBadge" class="role-badge">...</div>
       </header>
 
       <section class="panel">
         <div class="row row-gap">
-          <button id="registerBtn" class="primary">Включить трекер для выделенного токена</button>
-          <button id="removeBtn" class="danger">Убрать трекер</button>
-          <button id="refreshBtn">Обновить выбор</button>
+          <button id="refreshBtn">Обновить список</button>
+          <button id="syncBtn">Перерисовать оверлеи</button>
         </div>
-        <p id="selectionInfo" class="muted">Нет выбранного токена.</p>
-        <p id="statusBox" class="status info">Готово.</p>
+        <p id="statusBox" class="status info">Загрузка…</p>
+      </section>
+
+      <section class="panel">
+        <div class="section-title">Отслеживаемые токены</div>
+        <div id="trackedList" class="tracked-list"></div>
       </section>
 
       <section id="editor" class="panel hidden">
@@ -54,12 +57,13 @@
       </section>
 
       <section class="panel notes">
-        <div class="label">Подсказка</div>
-        <ul>
-          <li>Сначала один раз выдели токен.</li>
-          <li>Потом нажми «Обновить выбор», если окно не подхватило его сразу.</li>
-          <li>После включения трекера справа от токена должна появиться карточка, а на токене — точки и палочки урона.</li>
-        </ul>
+        <div class="section-title">Как пользоваться</div>
+        <ol>
+          <li>Нажми ПКМ по токену.</li>
+          <li>Выбери <b>Toggle Body HP Tracker</b>.</li>
+          <li>Токен появится в списке выше.</li>
+          <li>Нажми на него в списке и меняй значения.</li>
+        </ol>
       </section>
     </div>
 

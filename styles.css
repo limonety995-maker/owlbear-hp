@@ -1,20 +1,18 @@
 :root {
   color-scheme: dark;
-  --bg: #111827;
-  --panel: #1f2937;
+  --bg: #0b1220;
+  --panel: rgba(31, 41, 55, 0.94);
   --muted: #9ca3af;
   --text: #f9fafb;
   --accent: #60a5fa;
   --danger: #f87171;
-  --ok: #34d399;
-  --warn: #fbbf24;
   --border: rgba(255,255,255,0.12);
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
   padding: 16px;
-  background: #0b1220;
+  background: var(--bg);
   color: var(--text);
   font-family: Inter, system-ui, sans-serif;
 }
@@ -27,9 +25,10 @@ h1 { margin: 0; font-size: 20px; }
   border: 1px solid rgba(96,165,250,0.3); font-size: 12px;
 }
 .panel {
-  background: rgba(31,41,55,0.92); border: 1px solid var(--border);
+  background: var(--panel); border: 1px solid var(--border);
   border-radius: 12px; padding: 12px;
 }
+.section-title { font-size: 13px; color: var(--muted); margin-bottom: 10px; }
 .row { display: flex; align-items: center; gap: 8px; }
 .row-gap { gap: 10px; flex-wrap: wrap; }
 button {
@@ -38,9 +37,6 @@ button {
 }
 button:hover { filter: brightness(1.08); }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
-button.primary { background: #2563eb; }
-button.danger { background: #991b1b; }
-.muted { color: var(--muted); margin: 0; }
 .hidden { display: none; }
 .status {
   margin: 10px 0 0; padding: 10px 12px; border-radius: 10px; font-size: 13px;
@@ -50,6 +46,16 @@ button.danger { background: #991b1b; }
 .status.success { background: rgba(16,185,129,0.14); color: #a7f3d0; }
 .status.warn { background: rgba(245,158,11,0.14); color: #fde68a; }
 .status.error { background: rgba(239,68,68,0.14); color: #fecaca; }
+.tracked-list { display: flex; flex-direction: column; gap: 8px; }
+.tracked-item {
+  width: 100%; text-align: left; background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px;
+}
+.tracked-item.active { outline: 2px solid rgba(96,165,250,0.7); }
+.tracked-item-head { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.tracked-item-name { font-weight: 700; }
+.tracked-item-sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.empty { color: var(--muted); font-size: 14px; }
 .summary-box { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .token-name { font-size: 16px; font-weight: 700; }
@@ -77,4 +83,4 @@ button.danger { background: #991b1b; }
   width: 72px; padding: 8px; border-radius: 10px; border: 1px solid var(--border);
   background: #111827; color: var(--text);
 }
-.notes ul { margin: 8px 0 0 18px; color: var(--muted); padding: 0; }
+.notes ol { margin: 8px 0 0 18px; color: var(--muted); padding: 0; }

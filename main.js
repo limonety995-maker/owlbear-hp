@@ -10,6 +10,7 @@ import OBR, {
 const EXTENSION_ID = "com.openai.body-hp-tracker";
 const META_KEY = `${EXTENSION_ID}/data`;
 const OVERLAY_KEY = `${EXTENSION_ID}/overlayFor`;
+const HEART_ICON = new URL("./heart.svg", import.meta.url).href;
 
 const BODY_ORDER = ["L.Arm", "Head", "R.Arm", "L.Leg", "Torso", "R.Leg"];
 const BODY_DEFAULTS = {
@@ -24,10 +25,9 @@ const DEFAULT_DATA = { enabled: true, minor: 0, serious: 0, body: structuredClon
 
 const ui = {
   roleBadge: document.getElementById("roleBadge"),
-  registerBtn: document.getElementById("registerBtn"),
-  removeBtn: document.getElementById("removeBtn"),
   refreshBtn: document.getElementById("refreshBtn"),
-  selectionInfo: document.getElementById("selectionInfo"),
+  syncBtn: document.getElementById("syncBtn"),
+  trackedList: document.getElementById("trackedList"),
   statusBox: document.getElementById("statusBox"),
   editor: document.getElementById("editor"),
   tokenName: document.getElementById("tokenName"),
@@ -37,13 +37,12 @@ const ui = {
 };
 
 let playerRole = "PLAYER";
-let currentSelectionId = null;
-let currentToken = null;
+let activeTokenId = null;
 let lastSceneItems = [];
-let syncInFlight = false;
-let watchTimer = null;
+let contextMenuRegistered = false;
 
 function setStatus(message, kind = "info") {
+  if (!ui.statusBox) return;
   ui.statusBox.textContent = message;
   ui.statusBox.className = `status ${kind}`;
   console[kind === "error" ? "error" : "log"](`[Body HP] ${message}`);
@@ -70,9 +69,8 @@ function sanitizeData(raw) {
   return next;
 }
 
-function getTokenData(item) {
-  return sanitizeData(item?.metadata?.[META_KEY]);
-}
+function getTokenData(item) { return sanitizeData(item?.metadata?.[META_KEY]); }
+function isTracked(item) { return !!item?.metadata?.[META_KEY]?.enabled; }
 
 function formatOverlayText(data) {
   const b = data.body;
@@ -183,21 +181,6 @@ function buildOverlayLabel(token, data) {
     .build();
 }
 
-async function getLiveSelectionToken() {
-  const ids = await OBR.player.getSelection();
-  const id = ids?.[0] ?? null;
-  currentSelectionId = id;
-  if (!id) {
-    currentToken = null;
-    return null;
-  }
-  const items = await OBR.scene.items.getItems();
-  lastSceneItems = items;
-  const token = items.find((item) => item.id === id) ?? null;
-  currentToken = token;
-  return token;
-}
-
 async function updateTokenData(tokenId, updater) {
   await OBR.scene.items.updateItems([tokenId], (items) => {
     const token = items[0];
@@ -219,43 +202,72 @@ async function ensureOverlayForToken(tokenId) {
   const items = await OBR.scene.items.getItems();
   lastSceneItems = items;
   const token = items.find((item) => item.id === tokenId);
-  if (!token || !isTrackableToken(token)) throw new Error("Выбранный объект не поддерживается");
-
+  if (!token || !isTrackableToken(token)) return;
   const data = getTokenData(token);
   await removeExistingOverlays(tokenId);
   if (!data.enabled) return;
-
   const overlayItems = [buildOverlayLabel(token, data), ...buildMinorDots(token, data), ...buildSeriousMarks(token, data)];
   await OBR.scene.items.addItems(overlayItems);
 }
 
 async function syncTrackedOverlays() {
-  if (syncInFlight) return;
-  syncInFlight = true;
-  try {
-    const items = await OBR.scene.items.getItems();
-    lastSceneItems = items;
-    const trackedIds = items.filter((item) => item.metadata?.[META_KEY]?.enabled).map((item) => item.id);
-    for (const id of trackedIds) {
-      await ensureOverlayForToken(id);
-    }
-  } finally {
-    syncInFlight = false;
+  const items = await OBR.scene.items.getItems();
+  lastSceneItems = items;
+  const trackedIds = items.filter((item) => isTracked(item)).map((item) => item.id);
+  for (const id of trackedIds) await ensureOverlayForToken(id);
+}
+
+function getTrackedTokens(items = lastSceneItems) {
+  return items.filter((item) => isTrackableToken(item) && isTracked(item));
+}
+
+function getActiveToken() {
+  return lastSceneItems.find((item) => item.id === activeTokenId) ?? null;
+}
+
+function renderTrackedList() {
+  if (!ui.trackedList) return;
+  const tracked = getTrackedTokens();
+  if (!tracked.length) {
+    ui.trackedList.innerHTML = '<div class="empty">Пока пусто. Добавь токен через ПКМ → Toggle Body HP Tracker.</div>';
+    ui.editor?.classList.add("hidden");
+    return;
+  }
+  if (!activeTokenId || !tracked.find((item) => item.id === activeTokenId)) activeTokenId = tracked[0].id;
+  ui.trackedList.innerHTML = "";
+  for (const token of tracked) {
+    const data = getTokenData(token);
+    const btn = document.createElement("button");
+    btn.className = `tracked-item${token.id === activeTokenId ? " active" : ""}`;
+    btn.innerHTML = `
+      <div class="tracked-item-head">
+        <div class="tracked-item-name">${tokenDisplayName(token)}</div>
+        <div class="pill hp">${BODY_ORDER.reduce((s, key) => s + data.body[key].current, 0)}/${BODY_ORDER.reduce((s, key) => s + data.body[key].max, 0)}</div>
+      </div>
+      <div class="tracked-item-sub">Minor ${data.minor} · Serious ${data.serious}</div>`;
+    btn.addEventListener("click", async () => {
+      activeTokenId = token.id;
+      renderTrackedList();
+      renderEditor();
+      await OBR.player.select([token.id], true);
+      setStatus(`Активен токен: ${tokenDisplayName(token)}.`, "success");
+    });
+    ui.trackedList.appendChild(btn);
   }
 }
 
-function renderEditor(token) {
+function renderEditor() {
+  if (!ui.editor) return;
+  const token = getActiveToken();
   if (!token) {
-    ui.selectionInfo.textContent = "Нет выбранного токена.";
     ui.editor.classList.add("hidden");
     return;
   }
   const data = getTokenData(token);
-  ui.selectionInfo.textContent = `Выбран: ${tokenDisplayName(token)}`;
+  ui.editor.classList.remove("hidden");
   ui.tokenName.textContent = tokenDisplayName(token);
   ui.minorValue.textContent = String(data.minor);
   ui.seriousValue.textContent = String(data.serious);
-  ui.editor.classList.remove("hidden");
   ui.partsGrid.innerHTML = "";
 
   for (const key of BODY_ORDER) {
@@ -284,68 +296,50 @@ function renderEditor(token) {
       </div>`;
     ui.partsGrid.appendChild(card);
   }
-
-  ui.registerBtn.disabled = playerRole !== "GM";
-  ui.removeBtn.disabled = playerRole !== "GM";
 }
 
-async function refreshSelection(showStatus = false) {
-  const token = await getLiveSelectionToken();
-  renderEditor(token);
-  if (showStatus) {
-    if (!token) setStatus("Токен не выбран. Выдели один токен на карте и нажми «Обновить выбор».", "warn");
-    else setStatus(`Выбран токен: ${tokenDisplayName(token)}`, "success");
-  }
-  return token;
+async function refreshAll(showToast = false) {
+  lastSceneItems = await OBR.scene.items.getItems();
+  renderTrackedList();
+  renderEditor();
+  if (showToast) setStatus(`Список обновлён. Токенов с трекером: ${getTrackedTokens().length}.`, "success");
 }
 
-async function registerSelectedToken() {
-  try {
-    if (playerRole !== "GM") throw new Error("Только GM может менять значения");
-    const token = await refreshSelection();
-    if (!token) throw new Error("Сначала выдели один токен на карте");
-    if (!isTrackableToken(token)) throw new Error("Этот объект не поддерживается");
+async function toggleFromContext(context) {
+  const role = await OBR.player.getRole();
+  if (role !== "GM") return;
 
-    await updateTokenData(token.id, (current) => ({ ...current, enabled: true }));
-    await ensureOverlayForToken(token.id);
-    await refreshSelection();
-    await OBR.notification.show(`Трекер включён для ${tokenDisplayName(token)}`, "SUCCESS");
-    setStatus(`Трекер включён для ${tokenDisplayName(token)}. Карточка должна появиться справа от токена.`, "success");
-  } catch (error) {
-    const message = error?.message || "Не удалось включить трекер";
-    await OBR.notification.show(message, "ERROR");
-    setStatus(message, "error");
+  for (const item of context.items) {
+    if (!isTrackableToken(item)) continue;
+    const enabled = isTracked(item);
+    if (enabled) {
+      await OBR.scene.items.updateItems([item.id], (items) => {
+        if (!items[0]) return;
+        delete items[0].metadata[META_KEY];
+      });
+      await removeExistingOverlays(item.id);
+      if (activeTokenId === item.id) activeTokenId = null;
+    } else {
+      await updateTokenData(item.id, (current) => ({ ...current, enabled: true }));
+      await ensureOverlayForToken(item.id);
+      activeTokenId = item.id;
+    }
   }
-}
 
-async function unregisterSelectedToken() {
-  try {
-    if (playerRole !== "GM") throw new Error("Только GM может менять значения");
-    const token = await refreshSelection();
-    if (!token) throw new Error("Сначала выдели один токен на карте");
-    await updateTokenData(token.id, (current) => ({ ...current, enabled: false }));
-    await removeExistingOverlays(token.id);
-    await refreshSelection();
-    await OBR.notification.show(`Трекер убран у ${tokenDisplayName(token)}`, "SUCCESS");
-    setStatus(`Трекер убран у ${tokenDisplayName(token)}.`, "success");
-  } catch (error) {
-    const message = error?.message || "Не удалось убрать трекер";
-    await OBR.notification.show(message, "ERROR");
-    setStatus(message, "error");
-  }
+  await refreshAll();
 }
 
 async function changeStep(type, delta) {
   try {
     if (playerRole !== "GM") throw new Error("Только GM может менять значения");
-    const token = await refreshSelection();
-    if (!token) throw new Error("Сначала выдели один токен на карте");
+    const token = getActiveToken();
+    if (!token) throw new Error("Нет активного токена");
     await updateTokenData(token.id, (current) => ({
       ...current,
       [type]: clamp((current[type] ?? 0) + delta, 0, type === "minor" ? 4 : 2),
     }));
     await ensureOverlayForToken(token.id);
-    await refreshSelection();
+    await refreshAll();
     setStatus(`Обновлено: ${type} у ${tokenDisplayName(token)}.`, "success");
   } catch (error) {
     setStatus(error?.message || "Не удалось обновить значение", "error");
@@ -355,8 +349,8 @@ async function changeStep(type, delta) {
 async function updatePartField(partName, field, value) {
   try {
     if (playerRole !== "GM") throw new Error("Только GM может менять значения");
-    const token = await refreshSelection();
-    if (!token) throw new Error("Сначала выдели один токен на карте");
+    const token = getActiveToken();
+    if (!token) throw new Error("Нет активного токена");
     await updateTokenData(token.id, (current) => {
       const next = deepClone(current);
       const part = next.body[partName];
@@ -366,7 +360,7 @@ async function updatePartField(partName, field, value) {
       return next;
     });
     await ensureOverlayForToken(token.id);
-    await refreshSelection();
+    await refreshAll();
     setStatus(`Обновлён ${partName}: ${field}.`, "success");
   } catch (error) {
     setStatus(error?.message || "Не удалось обновить часть тела", "error");
@@ -374,15 +368,24 @@ async function updatePartField(partName, field, value) {
 }
 
 function bindUiEvents() {
-  ui.registerBtn.addEventListener("click", registerSelectedToken);
-  ui.removeBtn.addEventListener("click", unregisterSelectedToken);
-  ui.refreshBtn.addEventListener("click", () => refreshSelection(true));
+  ui.refreshBtn?.addEventListener("click", () => refreshAll(true).catch((e) => setStatus(e?.message || "Ошибка обновления", "error")));
+  ui.syncBtn?.addEventListener("click", async () => {
+    try {
+      await syncTrackedOverlays();
+      await refreshAll();
+      setStatus("Оверлеи перерисованы.", "success");
+    } catch (e) {
+      setStatus(e?.message || "Не удалось перерисовать оверлеи", "error");
+    }
+  });
+
   document.querySelectorAll("[data-step]").forEach((button) => {
     button.addEventListener("click", async () => {
       await changeStep(button.dataset.step, Number(button.dataset.delta));
     });
   });
-  ui.partsGrid.addEventListener("change", async (event) => {
+
+  ui.partsGrid?.addEventListener("change", async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     const part = target.dataset.part;
@@ -393,22 +396,15 @@ function bindUiEvents() {
 }
 
 function setupContextMenu() {
+  if (contextMenuRegistered) return;
+  contextMenuRegistered = true;
   OBR.contextMenu.create({
     id: `${EXTENSION_ID}/toggle`,
-    icons: [{ icon: "heart.svg", label: "Toggle Body HP Tracker" }],
+    icons: [{ icon: HEART_ICON, label: "Toggle Body HP Tracker" }],
     onClick: async (context) => {
       try {
-        const role = await OBR.player.getRole();
-        if (role !== "GM") return;
-        for (const item of context.items) {
-          if (!isTrackableToken(item)) continue;
-          const enabled = !!item.metadata?.[META_KEY]?.enabled;
-          await updateTokenData(item.id, (current) => ({ ...current, enabled: !enabled }));
-          if (!enabled) await ensureOverlayForToken(item.id);
-          else await removeExistingOverlays(item.id);
-        }
-        await refreshSelection();
-        setStatus("Контекстное меню отработало успешно.", "success");
+        await toggleFromContext(context);
+        setStatus("Трекер переключён через контекстное меню.", "success");
       } catch (error) {
         setStatus(error?.message || "Ошибка контекстного меню", "error");
       }
@@ -419,35 +415,22 @@ function setupContextMenu() {
 OBR.onReady(async () => {
   try {
     playerRole = await OBR.player.getRole();
-    ui.roleBadge.textContent = playerRole === "GM" ? "GM" : "PLAYER";
+    if (ui.roleBadge) ui.roleBadge.textContent = playerRole === "GM" ? "GM" : "PLAYER";
     bindUiEvents();
     setupContextMenu();
-
-    lastSceneItems = await OBR.scene.items.getItems();
-    await refreshSelection();
-    setStatus("Расширение загружено. Выдели токен и нажми «Обновить выбор».", "info");
-
-    OBR.player.onChange(async () => {
-      playerRole = await OBR.player.getRole();
-      ui.roleBadge.textContent = playerRole === "GM" ? "GM" : "PLAYER";
-      await refreshSelection();
-    });
+    await refreshAll();
+    setStatus("Расширение загружено. Добавляй токены через ПКМ → Toggle Body HP Tracker.", "info");
 
     OBR.scene.items.onChange(async (items) => {
       lastSceneItems = items;
-      if (currentSelectionId && !items.find((item) => item.id === currentSelectionId)) {
-        currentSelectionId = null;
-        currentToken = null;
-      }
-      renderEditor(currentToken);
+      renderTrackedList();
+      renderEditor();
     });
 
-    watchTimer = setInterval(() => {
-      refreshSelection().catch((error) => setStatus(error?.message || "Ошибка обновления выбора", "error"));
-    }, 700);
-
-    window.addEventListener("beforeunload", () => {
-      if (watchTimer) clearInterval(watchTimer);
+    OBR.player.onChange(async () => {
+      playerRole = await OBR.player.getRole();
+      if (ui.roleBadge) ui.roleBadge.textContent = playerRole === "GM" ? "GM" : "PLAYER";
+      renderEditor();
     });
   } catch (error) {
     setStatus(error?.message || "Ошибка инициализации расширения", "error");
