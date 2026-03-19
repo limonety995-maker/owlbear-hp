@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Body HP Tracker</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div>
+          <h1>Body HP Tracker</h1>
+          <p class="sub">Выдели токен и редактируй повреждения прямо в поповере.</p>
+        </div>
+        <div id="roleBadge" class="role-badge">...</div>
+      </header>
+
+      <section class="panel">
+        <div class="row row-gap">
+          <button id="registerBtn" class="primary">Включить трекер для выделенного токена</button>
+          <button id="removeBtn" class="danger">Убрать трекер</button>
+        </div>
+        <p id="selectionInfo" class="muted">Нет выбранного токена.</p>
+      </section>
+
+      <section id="editor" class="panel hidden">
+        <div class="summary-box">
+          <div>
+            <div class="label">Токен</div>
+            <div id="tokenName" class="token-name">—</div>
+          </div>
+          <div>
+            <div class="label">Minor</div>
+            <div class="stepper">
+              <button data-step="minor" data-delta="-1">−</button>
+              <span id="minorValue">0</span>
+              <button data-step="minor" data-delta="1">+</button>
+            </div>
+          </div>
+          <div>
+            <div class="label">Serious</div>
+            <div class="stepper">
+              <button data-step="serious" data-delta="-1">−</button>
+              <span id="seriousValue">0</span>
+              <button data-step="serious" data-delta="1">+</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="partsGrid" class="parts-grid"></div>
+      </section>
+
+      <section class="panel notes">
+        <div class="label">Как это работает</div>
+        <ul>
+          <li>Справа от токена показывается полупрозрачная карточка по частям тела.</li>
+          <li>Minor damage рисуется точками снизу слева (до 4).</li>
+          <li>Serious damage рисуется палочками сверху справа (до 2).</li>
+          <li>Все значения хранятся в metadata токена.</li>
+        </ul>
+      </section>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

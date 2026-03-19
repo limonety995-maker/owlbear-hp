@@ -1,0 +1,16 @@
+{
+  "name": "Body HP Tracker",
+  "version": "0.1.0",
+  "manifest_version": 1,
+  "author": "OpenAI",
+  "homepage_url": "https://example.com",
+  "icon": "/heart.svg",
+  "background_url": "/index.html",
+  "action": {
+    "title": "Body HP Tracker",
+    "icon": "/heart.svg",
+    "popover": "/index.html",
+    "height": 720,
+    "width": 460
+  }
+}
