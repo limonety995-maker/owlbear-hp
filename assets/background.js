@@ -3481,152 +3481,6 @@ var GenericItemBuilder = class {
   }
 };
 
-// node_modules/@owlbear-rodeo/sdk/lib/builders/LabelBuilder.js
-var LabelBuilder = class extends GenericItemBuilder {
-  constructor(player) {
-    super(player);
-    this._text = {
-      richText: [
-        {
-          type: "paragraph",
-          children: [{ text: "" }]
-        }
-      ],
-      plainText: "",
-      style: {
-        padding: 8,
-        fontFamily: "Roboto",
-        fontSize: 16,
-        fontWeight: 400,
-        textAlign: "CENTER",
-        textAlignVertical: "MIDDLE",
-        fillColor: "white",
-        fillOpacity: 1,
-        strokeColor: "white",
-        strokeOpacity: 1,
-        strokeWidth: 0,
-        lineHeight: 1.5
-      },
-      type: "PLAIN",
-      width: "AUTO",
-      height: "AUTO"
-    };
-    this._style = {
-      backgroundColor: "#3D4051",
-      backgroundOpacity: 1,
-      cornerRadius: 8,
-      pointerDirection: "DOWN",
-      pointerWidth: 4,
-      pointerHeight: 4
-    };
-    this._item.layer = "TEXT";
-    this._item.name = "Label";
-  }
-  text(text) {
-    this._text = text;
-    return this.self();
-  }
-  width(width) {
-    this._text.width = width;
-    return this.self();
-  }
-  height(height) {
-    this._text.height = height;
-    return this.self();
-  }
-  plainText(plainText) {
-    this._text.plainText = plainText;
-    return this.self();
-  }
-  padding(padding) {
-    this._text.style.padding = padding;
-    return this.self();
-  }
-  fontFamily(fontFamily) {
-    this._text.style.fontFamily = fontFamily;
-    return this.self();
-  }
-  fontSize(fontSize) {
-    this._text.style.fontSize = fontSize;
-    return this.self();
-  }
-  fontWeight(fontWeight) {
-    this._text.style.fontWeight = fontWeight;
-    return this.self();
-  }
-  textAlign(textAlign) {
-    this._text.style.textAlign = textAlign;
-    return this.self();
-  }
-  textAlignVertical(textAlignVertical) {
-    this._text.style.textAlignVertical = textAlignVertical;
-    return this.self();
-  }
-  fillColor(fillColor) {
-    this._text.style.fillColor = fillColor;
-    return this.self();
-  }
-  fillOpacity(fillOpacity) {
-    this._text.style.fillOpacity = fillOpacity;
-    return this.self();
-  }
-  strokeColor(strokeColor) {
-    this._text.style.strokeColor = strokeColor;
-    return this.self();
-  }
-  strokeOpacity(strokeOpacity) {
-    this._text.style.strokeOpacity = strokeOpacity;
-    return this.self();
-  }
-  strokeWidth(strokeWidth) {
-    this._text.style.strokeWidth = strokeWidth;
-    return this.self();
-  }
-  lineHeight(lineHeight) {
-    this._text.style.lineHeight = lineHeight;
-    return this.self();
-  }
-  style(style) {
-    this._style = style;
-    return this.self();
-  }
-  backgroundColor(backgroundColor) {
-    this._style.backgroundColor = backgroundColor;
-    return this.self();
-  }
-  backgroundOpacity(backgroundOpacity) {
-    this._style.backgroundOpacity = backgroundOpacity;
-    return this.self();
-  }
-  cornerRadius(cornerRadius) {
-    this._style.cornerRadius = cornerRadius;
-    return this.self();
-  }
-  pointerWidth(pointerWidth) {
-    this._style.pointerWidth = pointerWidth;
-    return this.self();
-  }
-  pointerHeight(pointerHeight) {
-    this._style.pointerHeight = pointerHeight;
-    return this.self();
-  }
-  pointerDirection(pointerDirection) {
-    this._style.pointerDirection = pointerDirection;
-    return this.self();
-  }
-  maxViewScale(maxViewScale) {
-    this._style.maxViewScale = maxViewScale;
-    return this.self();
-  }
-  minViewScale(minViewScale) {
-    this._style.minViewScale = minViewScale;
-    return this.self();
-  }
-  build() {
-    return Object.assign(Object.assign({}, this._item), { type: "LABEL", text: this._text, style: this._style });
-  }
-};
-
 // node_modules/@owlbear-rodeo/sdk/lib/builders/PathBuilder.js
 var PathBuilder = class extends GenericItemBuilder {
   constructor(player) {
@@ -3818,9 +3672,6 @@ var OBR = {
   /** True if the current site is embedded in an instance of Owlbear Rodeo */
   isAvailable: Boolean(details.origin)
 };
-function buildLabel() {
-  return new LabelBuilder(playerApi);
-}
 function buildPath() {
   return new PathBuilder(playerApi);
 }
@@ -3831,21 +3682,20 @@ var EXTENSION_ID = "com.codex.body-hp";
 var META_KEY = `${EXTENSION_ID}/data`;
 var OVERLAY_KEY = `${EXTENSION_ID}/overlayFor`;
 var BODY_ORDER = ["L.Arm", "Head", "R.Arm", "L.Leg", "Torso", "R.Leg"];
+var VISUAL_VERSION = 3;
 var RING_COLORS = {
   full: "#73FF5A",
   half: "#FFAF22",
   kaputt: "#FF460D",
-  border: "#251105",
-  text: "#0C1015",
-  textStroke: "rgba(255, 255, 255, 0.78)"
+  base: "#251105",
+  border: "#1B0B00"
 };
-var BODY_RING_LAYOUT = [
-  { part: "Head", angle: -90, span: 40 },
-  { part: "R.Arm", angle: -30, span: 38 },
-  { part: "R.Leg", angle: 34, span: 38 },
-  { part: "Torso", angle: 90, span: 52 },
-  { part: "L.Leg", angle: 146, span: 38 },
-  { part: "L.Arm", angle: 210, span: 38 }
+var OUTER_SEGMENTS = [
+  { part: "Head", angle: -90, span: 34 },
+  { part: "R.Arm", angle: -30, span: 34 },
+  { part: "R.Leg", angle: 30, span: 34 },
+  { part: "L.Leg", angle: 150, span: 34 },
+  { part: "L.Arm", angle: 210, span: 34 }
 ];
 var BODY_DEFAULTS = {
   "L.Arm": { current: 2, max: 2, armor: 2 },
@@ -3857,8 +3707,7 @@ var BODY_DEFAULTS = {
 };
 var DEFAULT_TRACKER_DATA = {
   enabled: true,
-  minor: 0,
-  serious: 0,
+  visualVersion: VISUAL_VERSION,
   body: structuredClone(BODY_DEFAULTS)
 };
 function deepClone(value) {
@@ -3871,8 +3720,7 @@ function sanitizeTrackerData(raw) {
   const next = deepClone(DEFAULT_TRACKER_DATA);
   if (!raw || typeof raw !== "object") return next;
   next.enabled = raw.enabled !== false;
-  next.minor = clamp(Number(raw.minor ?? 0) || 0, 0, 4);
-  next.serious = clamp(Number(raw.serious ?? 0) || 0, 0, 2);
+  next.visualVersion = VISUAL_VERSION;
   for (const partName of BODY_ORDER) {
     const source = raw.body?.[partName] ?? {};
     const part = next.body[partName];
@@ -3946,16 +3794,20 @@ async function getTokenMetrics(token) {
     gridDpi * scaleFactor,
     56
   );
-  const outerRadius = visibleDiameter * 0.76;
-  const ringThickness = Math.max(24, visibleDiameter * 0.22);
+  const outerRadius = visibleDiameter * 0.78;
+  const outerThickness = Math.max(22, visibleDiameter * 0.22);
+  const outerInnerRadius = outerRadius - outerThickness;
+  const ringGap = Math.max(7, visibleDiameter * 0.045);
+  const torsoOuterRadius = outerInnerRadius - ringGap;
+  const torsoThickness = Math.max(12, visibleDiameter * 0.12);
+  const torsoInnerRadius = torsoOuterRadius - torsoThickness;
   return {
     center,
-    width,
-    height,
     visibleDiameter,
     outerRadius,
-    innerRadius: outerRadius - ringThickness,
-    textRadius: outerRadius - ringThickness / 2
+    outerInnerRadius,
+    torsoOuterRadius,
+    torsoInnerRadius
   };
 }
 function polar(radius, angle) {
@@ -3965,7 +3817,7 @@ function polar(radius, angle) {
     y: radius * Math.sin(radians)
   };
 }
-function arcPoints(radius, startAngle, endAngle, segments = 10) {
+function arcPoints(radius, startAngle, endAngle, segments = 18) {
   const points = [];
   for (let index = 0; index <= segments; index += 1) {
     const ratio = index / segments;
@@ -3974,16 +3826,9 @@ function arcPoints(radius, startAngle, endAngle, segments = 10) {
   }
   return points;
 }
-function getPartColor(part) {
-  if (part.max <= 0 || part.current <= 0) return RING_COLORS.kaputt;
-  if (part.current < part.max) return RING_COLORS.half;
-  return RING_COLORS.full;
-}
-function buildSectorCommands(radiusOuter, radiusInner, centerAngle, spanAngle) {
-  const startAngle = centerAngle - spanAngle / 2;
-  const endAngle = centerAngle + spanAngle / 2;
-  const outer = arcPoints(radiusOuter, startAngle, endAngle, 8);
-  const inner = arcPoints(radiusInner, endAngle, startAngle, 8);
+function buildAnnulusCommands(radiusOuter, radiusInner) {
+  const outer = arcPoints(radiusOuter, -180, 180, 36);
+  const inner = arcPoints(radiusInner, 180, -180, 36);
   const commands = [[Command.MOVE, outer[0].x, outer[0].y]];
   for (const point of outer.slice(1)) {
     commands.push([Command.LINE, point.x, point.y]);
@@ -3994,28 +3839,72 @@ function buildSectorCommands(radiusOuter, radiusInner, centerAngle, spanAngle) {
   commands.push([Command.CLOSE]);
   return commands;
 }
-function buildSectorPath(token, partName, partData, metrics, angle, span) {
-  return buildPath().name(`${partName}: ${getCharacterName(token)}`).commands(
-    buildSectorCommands(metrics.outerRadius, metrics.innerRadius, angle, span)
-  ).fillColor(getPartColor(partData)).fillOpacity(0.96).strokeColor(RING_COLORS.border).strokeOpacity(1).strokeWidth(6).position(metrics.center).rotation(0).attachedTo(token.id).disableAttachmentBehavior(["ROTATION"]).layer("ATTACHMENT").locked(true).disableHit(true).metadata({ [OVERLAY_KEY]: token.id, kind: "body-sector", part: partName }).build();
+function buildSectorCommands(radiusOuter, radiusInner, centerAngle, spanAngle) {
+  const startAngle = centerAngle - spanAngle / 2;
+  const endAngle = centerAngle + spanAngle / 2;
+  const outer = arcPoints(radiusOuter, startAngle, endAngle, 10);
+  const inner = arcPoints(radiusInner, endAngle, startAngle, 10);
+  const commands = [[Command.MOVE, outer[0].x, outer[0].y]];
+  for (const point of outer.slice(1)) {
+    commands.push([Command.LINE, point.x, point.y]);
+  }
+  for (const point of inner) {
+    commands.push([Command.LINE, point.x, point.y]);
+  }
+  commands.push([Command.CLOSE]);
+  return commands;
 }
-function buildValueLabel(token, partName, partData, metrics, angle) {
-  const point = polar(metrics.textRadius, angle);
-  const labelSize = Math.max(54, metrics.visibleDiameter * 0.22);
-  return buildLabel().name(`${partName} Value: ${getCharacterName(token)}`).plainText(`${partData.current}/${partData.max}`).width(labelSize).height(28).padding(0).fontSize(Math.max(13, Math.round(metrics.visibleDiameter * 0.09))).fontWeight(800).lineHeight(1).textAlign("CENTER").textAlignVertical("MIDDLE").fillColor(RING_COLORS.text).backgroundColor("#000000").backgroundOpacity(0).strokeColor(RING_COLORS.textStroke).strokeOpacity(1).strokeWidth(0).position({
-    x: metrics.center.x + point.x,
-    y: metrics.center.y + point.y
-  }).rotation(0).attachedTo(token.id).disableAttachmentBehavior(["ROTATION"]).layer("ATTACHMENT").locked(true).disableHit(true).metadata({ [OVERLAY_KEY]: token.id, kind: "body-value", part: partName }).build();
+function getPartColor(part) {
+  if (part.max <= 0 || part.current <= 0) return RING_COLORS.kaputt;
+  if (part.current < part.max) return RING_COLORS.half;
+  return RING_COLORS.full;
+}
+function buildRingItem(token, metrics, kind, commands, fillColor, zIndex = 0) {
+  return buildPath().name(`${kind}: ${getCharacterName(token)}`).commands(commands).fillColor(fillColor).fillOpacity(1).strokeColor(RING_COLORS.border).strokeOpacity(1).strokeWidth(4).position(metrics.center).rotation(0).zIndex(Date.now() + zIndex).attachedTo(token.id).disableAttachmentBehavior(["ROTATION"]).layer("ATTACHMENT").locked(true).disableHit(true).metadata({
+    [OVERLAY_KEY]: token.id,
+    kind,
+    visualVersion: VISUAL_VERSION
+  }).build();
 }
 function buildOverlayItems(token, data, metrics) {
   const items = [];
-  for (const layout of BODY_RING_LAYOUT) {
-    const partData = data.body[layout.part];
+  items.push(
+    buildRingItem(
+      token,
+      metrics,
+      "outer-base",
+      buildAnnulusCommands(metrics.outerRadius, metrics.outerInnerRadius),
+      RING_COLORS.base,
+      0
+    )
+  );
+  for (const segment of OUTER_SEGMENTS) {
     items.push(
-      buildSectorPath(token, layout.part, partData, metrics, layout.angle, layout.span)
+      buildRingItem(
+        token,
+        metrics,
+        `segment-${segment.part}`,
+        buildSectorCommands(
+          metrics.outerRadius,
+          metrics.outerInnerRadius,
+          segment.angle,
+          segment.span
+        ),
+        getPartColor(data.body[segment.part]),
+        1
+      )
     );
-    items.push(buildValueLabel(token, layout.part, partData, metrics, layout.angle));
   }
+  items.push(
+    buildRingItem(
+      token,
+      metrics,
+      "torso-ring",
+      buildAnnulusCommands(metrics.torsoOuterRadius, metrics.torsoInnerRadius),
+      getPartColor(data.body.Torso),
+      2
+    )
+  );
   return items;
 }
 async function updateTrackerData(tokenId, updater) {

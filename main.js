@@ -52,7 +52,7 @@ function formatBodySummary(data) {
     `Head ${data.body.Head.current}/${data.body.Head.max}`,
     `R.Arm ${data.body["R.Arm"].current}/${data.body["R.Arm"].max}`,
     `Torso ${data.body.Torso.current}/${data.body.Torso.max}`,
-  ].join(" • ");
+  ].join(" / ");
 }
 
 function getCharacters() {
@@ -70,7 +70,7 @@ function getCharacterById(tokenId) {
 function resolveActiveTokenId() {
   const characters = getCharacters();
   const selectedCharacterId = selectionIds.find((id) =>
-    characters.some((character) => character.id === id)
+    characters.some((character) => character.id === id),
   );
 
   if (selectedCharacterId) return selectedCharacterId;
@@ -136,7 +136,7 @@ function renderSelectedToken() {
         </div>
         <div class="stat-chip">
           <span class="chip-label">Overlay</span>
-          <span class="chip-value">${tracked ? "Ring Active" : "Hidden"}</span>
+          <span class="chip-value">${tracked ? "5 Segments + Torso Ring" : "Hidden"}</span>
         </div>
       </div>
 
@@ -159,24 +159,24 @@ function renderSelectedToken() {
                   <td>
                     <div class="inline-stepper">
                       <button type="button" data-action="change-part" data-part="${escapeHtml(
-                        partName
+                        partName,
                       )}" data-field="current" data-delta="-1" ${fieldDisabled}>-</button>
                       <input type="number" min="0" max="${part.max}" value="${part.current}" data-action="set-field" data-part="${escapeHtml(
-                        partName
+                        partName,
                       )}" data-field="current" ${fieldDisabled}>
                       <button type="button" data-action="change-part" data-part="${escapeHtml(
-                        partName
+                        partName,
                       )}" data-field="current" data-delta="1" ${fieldDisabled}>+</button>
                     </div>
                   </td>
                   <td>
                     <input class="compact-input" type="number" min="0" max="99" value="${part.max}" data-action="set-field" data-part="${escapeHtml(
-                      partName
+                      partName,
                     )}" data-field="max" ${fieldDisabled}>
                   </td>
                   <td>
                     <input class="compact-input" type="number" min="0" max="99" value="${part.armor}" data-action="set-field" data-part="${escapeHtml(
-                      partName
+                      partName,
                     )}" data-field="armor" ${fieldDisabled}>
                   </td>
                 </tr>
@@ -187,9 +187,9 @@ function renderSelectedToken() {
       </div>
 
       <div class="preview-box">
-        <div class="field-label">Ring layout</div>
+        <div class="field-label">Display</div>
         <pre>${escapeHtml(
-          "Top: Head\nUpper Left: L.Arm\nUpper Right: R.Arm\nLower Left: L.Leg\nLower Center: Torso\nLower Right: R.Leg"
+          "Outer ring: Head, L.Arm, R.Arm, L.Leg, R.Leg\nInner ring: Torso\nOverlay values are shown by color only.",
         )}</pre>
       </div>
     </div>`;
@@ -243,9 +243,7 @@ function renderAllCharacters() {
             <div class="token-row-sub">${escapeHtml(token.id.slice(0, 8))}</div>
           </div>
           <div class="row row-gap">
-            <button type="button" class="secondary" data-action="select-character" data-token-id="${
-              token.id
-            }">Select</button>
+            <button type="button" class="secondary" data-action="select-character" data-token-id="${token.id}">Select</button>
             ${
               isEditable()
                 ? `<button type="button" class="${
@@ -285,7 +283,7 @@ async function syncState(showToast = false) {
   if (showToast) {
     setStatus(
       `Loaded ${getCharacters().length} character token(s), ${getTrackedCharacters().length} tracked.`,
-      "success"
+      "success",
     );
   }
 }
@@ -313,7 +311,7 @@ async function toggleTracking(tokenId) {
     enableTracking
       ? `Tracking enabled for ${getCharacterName(token)}.`
       : `Tracking removed for ${getCharacterName(token)}.`,
-    "success"
+    "success",
   );
 }
 
@@ -470,7 +468,7 @@ OBR.onReady(async () => {
     await syncState(true);
     setStatus(
       "Ready. Select a character token on the map to edit it here.",
-      "info"
+      "info",
     );
 
     OBR.scene.items.onChange((items) => {

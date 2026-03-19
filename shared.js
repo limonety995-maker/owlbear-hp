@@ -1,4 +1,4 @@
-import OBR, { Command, buildLabel, buildPath, isImage } from "@owlbear-rodeo/sdk";
+import OBR, { Command, buildPath, isImage } from "@owlbear-rodeo/sdk";
 
 export { OBR };
 
@@ -7,22 +7,21 @@ export const META_KEY = `${EXTENSION_ID}/data`;
 export const OVERLAY_KEY = `${EXTENSION_ID}/overlayFor`;
 export const BODY_ORDER = ["L.Arm", "Head", "R.Arm", "L.Leg", "Torso", "R.Leg"];
 
+const VISUAL_VERSION = 3;
 const RING_COLORS = {
   full: "#73FF5A",
   half: "#FFAF22",
   kaputt: "#FF460D",
-  border: "#251105",
-  text: "#0C1015",
-  textStroke: "rgba(255, 255, 255, 0.78)",
+  base: "#251105",
+  border: "#1B0B00",
 };
 
-const BODY_RING_LAYOUT = [
-  { part: "Head", angle: -90, span: 40 },
-  { part: "R.Arm", angle: -30, span: 38 },
-  { part: "R.Leg", angle: 34, span: 38 },
-  { part: "Torso", angle: 90, span: 52 },
-  { part: "L.Leg", angle: 146, span: 38 },
-  { part: "L.Arm", angle: 210, span: 38 },
+const OUTER_SEGMENTS = [
+  { part: "Head", angle: -90, span: 34 },
+  { part: "R.Arm", angle: -30, span: 34 },
+  { part: "R.Leg", angle: 30, span: 34 },
+  { part: "L.Leg", angle: 150, span: 34 },
+  { part: "L.Arm", angle: 210, span: 34 },
 ];
 
 export const BODY_DEFAULTS = {
@@ -36,8 +35,7 @@ export const BODY_DEFAULTS = {
 
 export const DEFAULT_TRACKER_DATA = {
   enabled: true,
-  minor: 0,
-  serious: 0,
+  visualVersion: VISUAL_VERSION,
   body: structuredClone(BODY_DEFAULTS),
 };
 
@@ -54,8 +52,7 @@ export function sanitizeTrackerData(raw) {
   if (!raw || typeof raw !== "object") return next;
 
   next.enabled = raw.enabled !== false;
-  next.minor = clamp(Number(raw.minor ?? 0) || 0, 0, 4);
-  next.serious = clamp(Number(raw.serious ?? 0) || 0, 0, 2);
+  next.visualVersion = VISUAL_VERSION;
 
   for (const partName of BODY_ORDER) {
     const source = raw.body?.[partName] ?? {};
@@ -99,14 +96,6 @@ export function sortCharacters(items) {
   return [...items].sort((left, right) =>
     getCharacterName(left).localeCompare(getCharacterName(right)),
   );
-}
-
-export function formatOverlayText(data) {
-  const body = data.body;
-  return [
-    `Head ${body.Head.current}/${body.Head.max} | R.Arm ${body["R.Arm"].current}/${body["R.Arm"].max} | L.Arm ${body["L.Arm"].current}/${body["L.Arm"].max}`,
-    `L.Leg ${body["L.Leg"].current}/${body["L.Leg"].max} | Torso ${body.Torso.current}/${body.Torso.max} | R.Leg ${body["R.Leg"].current}/${body["R.Leg"].max}`,
-  ].join("\n");
 }
 
 export function getBodyTotals(data) {
@@ -166,17 +155,21 @@ async function getTokenMetrics(token) {
     gridDpi * scaleFactor,
     56,
   );
-  const outerRadius = visibleDiameter * 0.76;
-  const ringThickness = Math.max(24, visibleDiameter * 0.22);
+  const outerRadius = visibleDiameter * 0.78;
+  const outerThickness = Math.max(22, visibleDiameter * 0.22);
+  const outerInnerRadius = outerRadius - outerThickness;
+  const ringGap = Math.max(7, visibleDiameter * 0.045);
+  const torsoOuterRadius = outerInnerRadius - ringGap;
+  const torsoThickness = Math.max(12, visibleDiameter * 0.12);
+  const torsoInnerRadius = torsoOuterRadius - torsoThickness;
 
   return {
     center,
-    width,
-    height,
     visibleDiameter,
     outerRadius,
-    innerRadius: outerRadius - ringThickness,
-    textRadius: outerRadius - ringThickness / 2,
+    outerInnerRadius,
+    torsoOuterRadius,
+    torsoInnerRadius,
   };
 }
 
@@ -188,7 +181,7 @@ function polar(radius, angle) {
   };
 }
 
-function arcPoints(radius, startAngle, endAngle, segments = 10) {
+function arcPoints(radius, startAngle, endAngle, segments = 18) {
   const points = [];
   for (let index = 0; index <= segments; index += 1) {
     const ratio = index / segments;
@@ -198,17 +191,9 @@ function arcPoints(radius, startAngle, endAngle, segments = 10) {
   return points;
 }
 
-function getPartColor(part) {
-  if (part.max <= 0 || part.current <= 0) return RING_COLORS.kaputt;
-  if (part.current < part.max) return RING_COLORS.half;
-  return RING_COLORS.full;
-}
-
-function buildSectorCommands(radiusOuter, radiusInner, centerAngle, spanAngle) {
-  const startAngle = centerAngle - spanAngle / 2;
-  const endAngle = centerAngle + spanAngle / 2;
-  const outer = arcPoints(radiusOuter, startAngle, endAngle, 8);
-  const inner = arcPoints(radiusInner, endAngle, startAngle, 8);
+function buildAnnulusCommands(radiusOuter, radiusInner) {
+  const outer = arcPoints(radiusOuter, -180, 180, 36);
+  const inner = arcPoints(radiusInner, 180, -180, 36);
   const commands = [[Command.MOVE, outer[0].x, outer[0].y]];
 
   for (const point of outer.slice(1)) {
@@ -223,73 +208,98 @@ function buildSectorCommands(radiusOuter, radiusInner, centerAngle, spanAngle) {
   return commands;
 }
 
-function buildSectorPath(token, partName, partData, metrics, angle, span) {
-  return buildPath()
-    .name(`${partName}: ${getCharacterName(token)}`)
-    .commands(
-      buildSectorCommands(metrics.outerRadius, metrics.innerRadius, angle, span),
-    )
-    .fillColor(getPartColor(partData))
-    .fillOpacity(0.96)
-    .strokeColor(RING_COLORS.border)
-    .strokeOpacity(1)
-    .strokeWidth(6)
-    .position(metrics.center)
-    .rotation(0)
-    .attachedTo(token.id)
-    .disableAttachmentBehavior(["ROTATION"])
-    .layer("ATTACHMENT")
-    .locked(true)
-    .disableHit(true)
-    .metadata({ [OVERLAY_KEY]: token.id, kind: "body-sector", part: partName })
-    .build();
+function buildSectorCommands(radiusOuter, radiusInner, centerAngle, spanAngle) {
+  const startAngle = centerAngle - spanAngle / 2;
+  const endAngle = centerAngle + spanAngle / 2;
+  const outer = arcPoints(radiusOuter, startAngle, endAngle, 10);
+  const inner = arcPoints(radiusInner, endAngle, startAngle, 10);
+  const commands = [[Command.MOVE, outer[0].x, outer[0].y]];
+
+  for (const point of outer.slice(1)) {
+    commands.push([Command.LINE, point.x, point.y]);
+  }
+
+  for (const point of inner) {
+    commands.push([Command.LINE, point.x, point.y]);
+  }
+
+  commands.push([Command.CLOSE]);
+  return commands;
 }
 
-function buildValueLabel(token, partName, partData, metrics, angle) {
-  const point = polar(metrics.textRadius, angle);
-  const labelSize = Math.max(54, metrics.visibleDiameter * 0.22);
+function getPartColor(part) {
+  if (part.max <= 0 || part.current <= 0) return RING_COLORS.kaputt;
+  if (part.current < part.max) return RING_COLORS.half;
+  return RING_COLORS.full;
+}
 
-  return buildLabel()
-    .name(`${partName} Value: ${getCharacterName(token)}`)
-    .plainText(`${partData.current}/${partData.max}`)
-    .width(labelSize)
-    .height(28)
-    .padding(0)
-    .fontSize(Math.max(13, Math.round(metrics.visibleDiameter * 0.09)))
-    .fontWeight(800)
-    .lineHeight(1)
-    .textAlign("CENTER")
-    .textAlignVertical("MIDDLE")
-    .fillColor(RING_COLORS.text)
-    .backgroundColor("#000000")
-    .backgroundOpacity(0)
-    .strokeColor(RING_COLORS.textStroke)
+function buildRingItem(token, metrics, kind, commands, fillColor, zIndex = 0) {
+  return buildPath()
+    .name(`${kind}: ${getCharacterName(token)}`)
+    .commands(commands)
+    .fillColor(fillColor)
+    .fillOpacity(1)
+    .strokeColor(RING_COLORS.border)
     .strokeOpacity(1)
-    .strokeWidth(0)
-    .position({
-      x: metrics.center.x + point.x,
-      y: metrics.center.y + point.y,
-    })
+    .strokeWidth(4)
+    .position(metrics.center)
     .rotation(0)
+    .zIndex(Date.now() + zIndex)
     .attachedTo(token.id)
     .disableAttachmentBehavior(["ROTATION"])
     .layer("ATTACHMENT")
     .locked(true)
     .disableHit(true)
-    .metadata({ [OVERLAY_KEY]: token.id, kind: "body-value", part: partName })
+    .metadata({
+      [OVERLAY_KEY]: token.id,
+      kind,
+      visualVersion: VISUAL_VERSION,
+    })
     .build();
 }
 
 export function buildOverlayItems(token, data, metrics) {
   const items = [];
 
-  for (const layout of BODY_RING_LAYOUT) {
-    const partData = data.body[layout.part];
+  items.push(
+    buildRingItem(
+      token,
+      metrics,
+      "outer-base",
+      buildAnnulusCommands(metrics.outerRadius, metrics.outerInnerRadius),
+      RING_COLORS.base,
+      0,
+    ),
+  );
+
+  for (const segment of OUTER_SEGMENTS) {
     items.push(
-      buildSectorPath(token, layout.part, partData, metrics, layout.angle, layout.span),
+      buildRingItem(
+        token,
+        metrics,
+        `segment-${segment.part}`,
+        buildSectorCommands(
+          metrics.outerRadius,
+          metrics.outerInnerRadius,
+          segment.angle,
+          segment.span,
+        ),
+        getPartColor(data.body[segment.part]),
+        1,
+      ),
     );
-    items.push(buildValueLabel(token, layout.part, partData, metrics, layout.angle));
   }
+
+  items.push(
+    buildRingItem(
+      token,
+      metrics,
+      "torso-ring",
+      buildAnnulusCommands(metrics.torsoOuterRadius, metrics.torsoInnerRadius),
+      getPartColor(data.body.Torso),
+      2,
+    ),
+  );
 
   return items;
 }
