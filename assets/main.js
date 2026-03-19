@@ -3481,10 +3481,13 @@ var GenericItemBuilder = class {
   }
 };
 
-// node_modules/@owlbear-rodeo/sdk/lib/builders/LabelBuilder.js
-var LabelBuilder = class extends GenericItemBuilder {
-  constructor(player) {
+// node_modules/@owlbear-rodeo/sdk/lib/builders/ImageBuilder.js
+var ImageBuilder = class extends GenericItemBuilder {
+  constructor(player, image, grid) {
     super(player);
+    this._image = image;
+    this._grid = grid;
+    this._item.name = "Image";
     this._text = {
       richText: [
         {
@@ -3496,10 +3499,10 @@ var LabelBuilder = class extends GenericItemBuilder {
       style: {
         padding: 8,
         fontFamily: "Roboto",
-        fontSize: 16,
+        fontSize: 24,
         fontWeight: 400,
         textAlign: "CENTER",
-        textAlignVertical: "MIDDLE",
+        textAlignVertical: "BOTTOM",
         fillColor: "white",
         fillOpacity: 1,
         strokeColor: "white",
@@ -3511,34 +3514,37 @@ var LabelBuilder = class extends GenericItemBuilder {
       width: "AUTO",
       height: "AUTO"
     };
-    this._style = {
-      backgroundColor: "#3D4051",
-      backgroundOpacity: 1,
-      cornerRadius: 8,
-      pointerDirection: "DOWN",
-      pointerWidth: 4,
-      pointerHeight: 4
-    };
-    this._item.layer = "TEXT";
-    this._item.name = "Label";
+    this._textItemType = "LABEL";
   }
   text(text) {
     this._text = text;
     return this.self();
   }
-  width(width) {
+  textItemType(textItemType) {
+    this._textItemType = textItemType;
+    return this.self();
+  }
+  textWidth(width) {
     this._text.width = width;
     return this.self();
   }
-  height(height) {
+  textHeight(height) {
     this._text.height = height;
+    return this.self();
+  }
+  richText(richText) {
+    this._text.richText = richText;
     return this.self();
   }
   plainText(plainText) {
     this._text.plainText = plainText;
     return this.self();
   }
-  padding(padding) {
+  textType(textType) {
+    this._text.type = textType;
+    return this.self();
+  }
+  textPadding(padding) {
     this._text.style.padding = padding;
     return this.self();
   }
@@ -3562,131 +3568,32 @@ var LabelBuilder = class extends GenericItemBuilder {
     this._text.style.textAlignVertical = textAlignVertical;
     return this.self();
   }
-  fillColor(fillColor) {
+  textFillColor(fillColor) {
     this._text.style.fillColor = fillColor;
     return this.self();
   }
-  fillOpacity(fillOpacity) {
+  textFillOpacity(fillOpacity) {
     this._text.style.fillOpacity = fillOpacity;
     return this.self();
   }
-  strokeColor(strokeColor) {
+  textStrokeColor(strokeColor) {
     this._text.style.strokeColor = strokeColor;
     return this.self();
   }
-  strokeOpacity(strokeOpacity) {
+  textStrokeOpacity(strokeOpacity) {
     this._text.style.strokeOpacity = strokeOpacity;
     return this.self();
   }
-  strokeWidth(strokeWidth) {
+  textStrokeWidth(strokeWidth) {
     this._text.style.strokeWidth = strokeWidth;
     return this.self();
   }
-  lineHeight(lineHeight) {
+  textLineHeight(lineHeight) {
     this._text.style.lineHeight = lineHeight;
     return this.self();
   }
-  style(style) {
-    this._style = style;
-    return this.self();
-  }
-  backgroundColor(backgroundColor) {
-    this._style.backgroundColor = backgroundColor;
-    return this.self();
-  }
-  backgroundOpacity(backgroundOpacity) {
-    this._style.backgroundOpacity = backgroundOpacity;
-    return this.self();
-  }
-  cornerRadius(cornerRadius) {
-    this._style.cornerRadius = cornerRadius;
-    return this.self();
-  }
-  pointerWidth(pointerWidth) {
-    this._style.pointerWidth = pointerWidth;
-    return this.self();
-  }
-  pointerHeight(pointerHeight) {
-    this._style.pointerHeight = pointerHeight;
-    return this.self();
-  }
-  pointerDirection(pointerDirection) {
-    this._style.pointerDirection = pointerDirection;
-    return this.self();
-  }
-  maxViewScale(maxViewScale) {
-    this._style.maxViewScale = maxViewScale;
-    return this.self();
-  }
-  minViewScale(minViewScale) {
-    this._style.minViewScale = minViewScale;
-    return this.self();
-  }
   build() {
-    return Object.assign(Object.assign({}, this._item), { type: "LABEL", text: this._text, style: this._style });
-  }
-};
-
-// node_modules/@owlbear-rodeo/sdk/lib/builders/ShapeBuilder.js
-var ShapeBuilder = class extends GenericItemBuilder {
-  constructor(player) {
-    super(player);
-    this._width = 0;
-    this._height = 0;
-    this._shapeType = "RECTANGLE";
-    this._style = {
-      fillColor: "black",
-      fillOpacity: 1,
-      strokeColor: "white",
-      strokeOpacity: 1,
-      strokeWidth: 5,
-      strokeDash: []
-    };
-    this._item.layer = "DRAWING";
-    this._item.name = "Shape";
-  }
-  width(width) {
-    this._width = width;
-    return this.self();
-  }
-  height(height) {
-    this._height = height;
-    return this.self();
-  }
-  shapeType(shapeType) {
-    this._shapeType = shapeType;
-    return this.self();
-  }
-  style(style) {
-    this._style = style;
-    return this.self();
-  }
-  fillColor(fillColor) {
-    this._style.fillColor = fillColor;
-    return this.self();
-  }
-  fillOpacity(fillOpacity) {
-    this._style.fillOpacity = fillOpacity;
-    return this.self();
-  }
-  strokeColor(strokeColor) {
-    this._style.strokeColor = strokeColor;
-    return this.self();
-  }
-  strokeOpacity(strokeOpacity) {
-    this._style.strokeOpacity = strokeOpacity;
-    return this.self();
-  }
-  strokeWidth(strokeWidth) {
-    this._style.strokeWidth = strokeWidth;
-    return this.self();
-  }
-  strokeDash(strokeDash) {
-    this._style.strokeDash = strokeDash;
-    return this.self();
-  }
-  build() {
-    return Object.assign(Object.assign({}, this._item), { type: "SHAPE", width: this._width, height: this._height, shapeType: this._shapeType, style: this._style });
+    return Object.assign(Object.assign({}, this._item), { type: "IMAGE", image: this._image, grid: this._grid, text: this._text, textItemType: this._textItemType });
   }
 };
 
@@ -3823,11 +3730,8 @@ var OBR = {
   /** True if the current site is embedded in an instance of Owlbear Rodeo */
   isAvailable: Boolean(details.origin)
 };
-function buildLabel() {
-  return new LabelBuilder(playerApi);
-}
-function buildShape() {
-  return new ShapeBuilder(playerApi);
+function buildImage(image, grid) {
+  return new ImageBuilder(playerApi, image, grid);
 }
 var lib_default = OBR;
 
@@ -3836,6 +3740,29 @@ var EXTENSION_ID = "com.codex.body-hp";
 var META_KEY = `${EXTENSION_ID}/data`;
 var OVERLAY_KEY = `${EXTENSION_ID}/overlayFor`;
 var BODY_ORDER = ["L.Arm", "Head", "R.Arm", "L.Leg", "Torso", "R.Leg"];
+var SVG_SIZE = 512;
+var SVG_CENTER = SVG_SIZE / 2;
+var OUTER_RADIUS = 244;
+var INNER_RADIUS = 170;
+var TEXT_RADIUS = (OUTER_RADIUS + INNER_RADIUS) / 2;
+var SECTOR_HALF_SPAN = 26;
+var RING_COLORS = {
+  full: "#73FF5A",
+  half: "#FFAF22",
+  kaputt: "#FF460D",
+  border: "#2A1200",
+  shadow: "rgba(0, 0, 0, 0.24)",
+  text: "#0A0F12",
+  textStroke: "rgba(255, 255, 255, 0.72)"
+};
+var BODY_RING_LAYOUT = [
+  { part: "Head", angle: -90 },
+  { part: "R.Arm", angle: -30 },
+  { part: "R.Leg", angle: 30 },
+  { part: "Torso", angle: 90 },
+  { part: "L.Leg", angle: 150 },
+  { part: "L.Arm", angle: 210 }
+];
 var BODY_DEFAULTS = {
   "L.Arm": { current: 2, max: 2, armor: 2 },
   Head: { current: 1, max: 1, armor: 0 },
@@ -3898,13 +3825,6 @@ function sortCharacters(items) {
     (left, right) => getCharacterName(left).localeCompare(getCharacterName(right))
   );
 }
-function formatOverlayText(data) {
-  const body = data.body;
-  return [
-    `L.Arm ${body["L.Arm"].current}/${body["L.Arm"].max}(${body["L.Arm"].armor}) | Head ${body["Head"].current}/${body["Head"].max}(${body["Head"].armor}) | R.Arm ${body["R.Arm"].current}/${body["R.Arm"].max}(${body["R.Arm"].armor})`,
-    `L.Leg ${body["L.Leg"].current}/${body["L.Leg"].max}(${body["L.Leg"].armor}) | Torso ${body["Torso"].current}/${body["Torso"].max}(${body["Torso"].armor}) | R.Leg ${body["R.Leg"].current}/${body["R.Leg"].max}(${body["R.Leg"].armor})`
-  ].join("\n");
-}
 function getBodyTotals(data) {
   return BODY_ORDER.reduce(
     (accumulator, partName) => {
@@ -3938,18 +3858,18 @@ async function getTokenMetrics(token) {
   } catch (error) {
     console.warn("[Body HP] Unable to read token bounds, using fallback size", error);
   }
-  let gridDpi = 0;
+  let gridDpi = 150;
   try {
-    gridDpi = await lib_default.scene.grid.getDpi();
+    gridDpi = await lib_default.scene.grid.getDpi() || gridDpi;
   } catch (error) {
-    console.warn("[Body HP] Unable to read grid dpi, using size fallback", error);
+    console.warn("[Body HP] Unable to read grid dpi, using fallback size", error);
   }
   const scaleFactor = Math.max(
     Math.abs(token.scale?.x ?? 1),
     Math.abs(token.scale?.y ?? 1),
     1
   );
-  const markerSize = Math.max(
+  const visibleDiameter = Math.max(
     width,
     height,
     effectiveSize.width,
@@ -3961,81 +3881,117 @@ async function getTokenMetrics(token) {
     center,
     width,
     height,
-    markerSize
+    gridDpi,
+    visibleDiameter,
+    overlayDiameter: visibleDiameter * 1.52
   };
 }
-function getWorldPosition(token, center, offsetX, offsetY) {
-  const radians = (token.rotation ?? 0) * Math.PI / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
+function toPolarPoint(radius, angle) {
+  const radians = angle * Math.PI / 180;
   return {
-    x: center.x + offsetX * cos - offsetY * sin,
-    y: center.y + offsetX * sin + offsetY * cos
+    x: SVG_CENTER + radius * Math.cos(radians),
+    y: SVG_CENTER + radius * Math.sin(radians)
   };
 }
-function buildOverlayCard(token, data, metrics) {
-  const width = Math.max(360, Math.round(metrics.width * 2.55));
-  const height = 72;
-  const offsetX = metrics.width / 2 + width / 2 + 18;
-  return buildLabel().name(`Body HP: ${getCharacterName(token)}`).plainText(formatOverlayText(data)).width(width).height(height).padding(10).fontSize(13).fontWeight(600).lineHeight(1.18).textAlign("LEFT").textAlignVertical("MIDDLE").fillColor("#f8fafc").backgroundColor("#020617").backgroundOpacity(0.58).strokeColor("#cbd5e1").strokeOpacity(0.45).strokeWidth(1).cornerRadius(12).pointerDirection("LEFT").pointerWidth(10).pointerHeight(12).position(getWorldPosition(token, metrics.center, offsetX, 0)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).metadata({ [OVERLAY_KEY]: token.id, kind: "body-card" }).build();
+function describeSectorPath(startAngle, endAngle) {
+  const outerStart = toPolarPoint(OUTER_RADIUS, startAngle);
+  const outerEnd = toPolarPoint(OUTER_RADIUS, endAngle);
+  const innerEnd = toPolarPoint(INNER_RADIUS, endAngle);
+  const innerStart = toPolarPoint(INNER_RADIUS, startAngle);
+  const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+  return [
+    `M ${outerStart.x.toFixed(2)} ${outerStart.y.toFixed(2)}`,
+    `A ${OUTER_RADIUS} ${OUTER_RADIUS} 0 ${largeArcFlag} 1 ${outerEnd.x.toFixed(2)} ${outerEnd.y.toFixed(2)}`,
+    `L ${innerEnd.x.toFixed(2)} ${innerEnd.y.toFixed(2)}`,
+    `A ${INNER_RADIUS} ${INNER_RADIUS} 0 ${largeArcFlag} 0 ${innerStart.x.toFixed(2)} ${innerStart.y.toFixed(2)}`,
+    "Z"
+  ].join(" ");
 }
-function buildMinorDots(token, data, metrics) {
-  const items = [];
-  const startX = -metrics.markerSize / 2 + 12;
-  const y = metrics.markerSize / 2 - 12;
-  for (let index = 0; index < data.minor; index += 1) {
-    items.push(
-      buildShape().shapeType("CIRCLE").width(8).height(8).position(getWorldPosition(token, metrics.center, startX + index * 10, y)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#f59e0b").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).metadata({ [OVERLAY_KEY]: token.id, kind: "minor", index }).build()
-    );
-  }
-  return items;
+function getPartColor(part) {
+  if (part.current <= 0 || part.max <= 0) return RING_COLORS.kaputt;
+  if (part.current < part.max) return RING_COLORS.half;
+  return RING_COLORS.full;
 }
-function buildSeriousBars(token, data, metrics) {
-  const items = [];
-  const x = metrics.markerSize / 2 - 12;
-  const startY = -metrics.markerSize / 2 + 13;
-  for (let index = 0; index < data.serious; index += 1) {
-    items.push(
-      buildShape().shapeType("RECTANGLE").width(4).height(18).position(getWorldPosition(token, metrics.center, x - index * 8, startY)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#ef4444").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).metadata({ [OVERLAY_KEY]: token.id, kind: "serious", index }).build()
-    );
-  }
-  return items;
+function escapeXml(value) {
+  return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
 }
-function buildBodyFigure(token, data, metrics) {
-  const parts = [];
-  const spacing = 14;
-  const positions = {
-    Head: [0, -spacing * 2],
-    Torso: [0, 0],
-    "L.Arm": [-spacing, 0],
-    "R.Arm": [spacing, 0],
-    "L.Leg": [-spacing / 2, spacing * 2],
-    "R.Leg": [spacing / 2, spacing * 2]
-  };
-  for (const partName of BODY_ORDER) {
-    const part = data.body[partName];
-    const [x, y] = positions[partName];
-    const hpRatio = part.max > 0 ? part.current / part.max : 0;
-    let color = "#22c55e";
-    if (hpRatio < 0.5) color = "#f59e0b";
-    if (hpRatio < 0.25) color = "#ef4444";
-    parts.push(
-      buildShape().shapeType("RECTANGLE").width(10).height(10).position(getWorldPosition(token, metrics.center, x, y)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor(color).fillOpacity(0.95).strokeColor("#111").strokeWidth(1).metadata({
-        [OVERLAY_KEY]: token.id,
-        kind: "body-part",
-        part: partName
-      }).build()
-    );
-  }
-  return parts;
+function buildRingSvg(data) {
+  const sectors = BODY_RING_LAYOUT.map(({ part, angle }) => {
+    const bodyPart = data.body[part];
+    const path = describeSectorPath(angle - SECTOR_HALF_SPAN, angle + SECTOR_HALF_SPAN);
+    const textPoint = toPolarPoint(TEXT_RADIUS, angle);
+    const label = `${bodyPart.current}/${bodyPart.max}`;
+    return `
+      <path
+        d="${path}"
+        fill="${getPartColor(bodyPart)}"
+        stroke="${RING_COLORS.border}"
+        stroke-width="6"
+        stroke-linejoin="round"
+      />
+      <text
+        x="${textPoint.x.toFixed(2)}"
+        y="${textPoint.y.toFixed(2)}"
+        text-anchor="middle"
+        dominant-baseline="middle"
+        font-family="Segoe UI, Arial, sans-serif"
+        font-size="30"
+        font-weight="800"
+        fill="${RING_COLORS.text}"
+        stroke="${RING_COLORS.textStroke}"
+        stroke-width="6"
+        paint-order="stroke"
+      >${escapeXml(label)}</text>
+    `;
+  }).join("");
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${SVG_SIZE}" height="${SVG_SIZE}" viewBox="0 0 ${SVG_SIZE} ${SVG_SIZE}">
+      <defs>
+        <filter id="ringShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="${RING_COLORS.shadow}" />
+        </filter>
+      </defs>
+      <g filter="url(#ringShadow)">
+        ${sectors}
+        <circle
+          cx="${SVG_CENTER}"
+          cy="${SVG_CENTER}"
+          r="${OUTER_RADIUS - 2}"
+          fill="none"
+          stroke="${RING_COLORS.border}"
+          stroke-width="4"
+        />
+        <circle
+          cx="${SVG_CENTER}"
+          cy="${SVG_CENTER}"
+          r="${INNER_RADIUS + 2}"
+          fill="none"
+          stroke="${RING_COLORS.border}"
+          stroke-width="4"
+        />
+      </g>
+    </svg>
+  `.trim();
+}
+function buildRingOverlay(token, data, metrics) {
+  const svg = buildRingSvg(data);
+  const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  const imageDpi = SVG_SIZE * metrics.gridDpi / metrics.overlayDiameter;
+  return buildImage(
+    {
+      width: SVG_SIZE,
+      height: SVG_SIZE,
+      mime: "image/svg+xml",
+      url: dataUrl
+    },
+    {
+      offset: { x: 0, y: 0 },
+      dpi: imageDpi
+    }
+  ).name(`Body Ring: ${getCharacterName(token)}`).position(metrics.center).rotation(0).attachedTo(token.id).disableAttachmentBehavior(["ROTATION"]).layer("ATTACHMENT").locked(true).disableHit(true).metadata({ [OVERLAY_KEY]: token.id, kind: "body-ring" }).build();
 }
 function buildOverlayItems(token, data, metrics) {
-  return [
-    buildOverlayCard(token, data, metrics),
-    ...buildBodyFigure(token, data, metrics),
-    ...buildMinorDots(token, data, metrics),
-    ...buildSeriousBars(token, data, metrics)
-  ];
+  return [buildRingOverlay(token, data, metrics)];
 }
 async function updateTrackerData(tokenId, updater) {
   await lib_default.scene.items.updateItems([tokenId], (items) => {
@@ -4123,6 +4079,13 @@ function setStatus(message, kind = "info") {
 function escapeHtml(value) {
   return String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
 }
+function formatBodySummary(data) {
+  return [
+    `Head ${data.body.Head.current}/${data.body.Head.max}`,
+    `R.Arm ${data.body["R.Arm"].current}/${data.body["R.Arm"].max}`,
+    `Torso ${data.body.Torso.current}/${data.body.Torso.max}`
+  ].join(" \u2022 ");
+}
 function getCharacters() {
   return sortCharacters(sceneItems.filter(isCharacterToken));
 }
@@ -4162,7 +4125,6 @@ function renderSelectedToken() {
   const selected = selectionIds.includes(token.id);
   ui.selectionHint.textContent = selected ? "Selected on map" : "Showing current focus";
   const toggleButton = isEditable() ? `<button type="button" data-action="toggle-tracking" class="${tracked ? "danger" : "success"}">${tracked ? "Remove Tracking" : "Track Character"}</button>` : "";
-  const damageDisabled = !tracked || !isEditable() ? "disabled" : "";
   const fieldDisabled = !tracked || !isEditable() ? "disabled" : "";
   ui.selectedTokenPanel.innerHTML = `
     <div class="selected-card">
@@ -4183,31 +4145,8 @@ function renderSelectedToken() {
           <span class="chip-value">${totals.current}/${totals.max}</span>
         </div>
         <div class="stat-chip">
-          <span class="chip-label">Minor</span>
-          <span class="chip-value">${data.minor}</span>
-        </div>
-        <div class="stat-chip">
-          <span class="chip-label">Serious</span>
-          <span class="chip-value">${data.serious}</span>
-        </div>
-      </div>
-
-      <div class="damage-grid">
-        <div class="damage-card">
-          <div class="field-label">Minor damage dots</div>
-          <div class="stepper">
-            <button type="button" data-action="change-damage" data-kind="minor" data-delta="-1" ${damageDisabled}>-</button>
-            <span>${data.minor}/4</span>
-            <button type="button" data-action="change-damage" data-kind="minor" data-delta="1" ${damageDisabled}>+</button>
-          </div>
-        </div>
-        <div class="damage-card">
-          <div class="field-label">Serious damage bars</div>
-          <div class="stepper">
-            <button type="button" data-action="change-damage" data-kind="serious" data-delta="-1" ${damageDisabled}>-</button>
-            <span>${data.serious}/2</span>
-            <button type="button" data-action="change-damage" data-kind="serious" data-delta="1" ${damageDisabled}>+</button>
-          </div>
+          <span class="chip-label">Overlay</span>
+          <span class="chip-value">${tracked ? "Ring Active" : "Hidden"}</span>
         </div>
       </div>
 
@@ -4258,8 +4197,10 @@ function renderSelectedToken() {
       </div>
 
       <div class="preview-box">
-        <div class="field-label">Overlay preview</div>
-        <pre>${escapeHtml(formatOverlayText(data))}</pre>
+        <div class="field-label">Ring layout</div>
+        <pre>${escapeHtml(
+    "Top: Head\nUpper Left: L.Arm\nUpper Right: R.Arm\nLower Left: L.Leg\nLower Center: Torso\nLower Right: R.Leg"
+  )}</pre>
       </div>
     </div>`;
 }
@@ -4279,7 +4220,7 @@ function renderTrackedList() {
             <span>${escapeHtml(getCharacterName(token))}</span>
             <span class="pill hp">${totals.current}/${totals.max}</span>
           </div>
-          <div class="list-item-sub">Minor ${data.minor} - Serious ${data.serious}</div>
+          <div class="list-item-sub">${escapeHtml(formatBodySummary(data))}</div>
         </button>`;
   }).join("");
 }
@@ -4348,27 +4289,6 @@ async function toggleTracking(tokenId) {
     enableTracking ? `Tracking enabled for ${getCharacterName(token)}.` : `Tracking removed for ${getCharacterName(token)}.`,
     "success"
   );
-}
-async function changeDamage(kind, delta) {
-  if (!isEditable()) {
-    setStatus("Only the GM can edit damage values.", "error");
-    return;
-  }
-  const token = getCharacterById(activeTokenId);
-  if (!token || !isTrackedCharacter(token)) {
-    setStatus("Select a tracked character first.", "error");
-    return;
-  }
-  await updateTrackerData(token.id, (current2) => ({
-    ...current2,
-    [kind]: clamp(
-      (current2[kind] ?? 0) + delta,
-      0,
-      kind === "minor" ? 4 : 2
-    )
-  }));
-  await ensureOverlayForToken(token.id);
-  await syncState();
 }
 async function changeBodyField(partName, field, delta) {
   if (!isEditable()) {
@@ -4470,13 +4390,6 @@ function bindUiEvents() {
     if (action === "focus-token" && activeTokenId) {
       void selectCharacter(activeTokenId).catch((error) => {
         setStatus(error?.message ?? "Unable to focus token.", "error");
-      });
-    }
-    if (action === "change-damage") {
-      const kind = actionNode.dataset.kind;
-      if (!kind) return;
-      void changeDamage(kind, delta).catch((error) => {
-        setStatus(error?.message ?? "Unable to update damage.", "error");
       });
     }
     if (action === "change-part" && partName && field) {

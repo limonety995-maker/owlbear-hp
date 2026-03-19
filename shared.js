@@ -1,4 +1,4 @@
-import OBR, { buildLabel, buildShape, isImage } from "@owlbear-rodeo/sdk";
+import OBR, { buildImage, isImage } from "@owlbear-rodeo/sdk";
 
 export { OBR };
 
@@ -6,6 +6,30 @@ export const EXTENSION_ID = "com.codex.body-hp";
 export const META_KEY = `${EXTENSION_ID}/data`;
 export const OVERLAY_KEY = `${EXTENSION_ID}/overlayFor`;
 export const BODY_ORDER = ["L.Arm", "Head", "R.Arm", "L.Leg", "Torso", "R.Leg"];
+
+const SVG_SIZE = 512;
+const SVG_CENTER = SVG_SIZE / 2;
+const OUTER_RADIUS = 244;
+const INNER_RADIUS = 170;
+const TEXT_RADIUS = (OUTER_RADIUS + INNER_RADIUS) / 2;
+const SECTOR_HALF_SPAN = 26;
+const RING_COLORS = {
+  full: "#73FF5A",
+  half: "#FFAF22",
+  kaputt: "#FF460D",
+  border: "#2A1200",
+  shadow: "rgba(0, 0, 0, 0.24)",
+  text: "#0A0F12",
+  textStroke: "rgba(255, 255, 255, 0.72)",
+};
+const BODY_RING_LAYOUT = [
+  { part: "Head", angle: -90 },
+  { part: "R.Arm", angle: -30 },
+  { part: "R.Leg", angle: 30 },
+  { part: "Torso", angle: 90 },
+  { part: "L.Leg", angle: 150 },
+  { part: "L.Arm", angle: 210 },
+];
 
 export const BODY_DEFAULTS = {
   "L.Arm": { current: 2, max: 2, armor: 2 },
@@ -86,8 +110,8 @@ export function sortCharacters(items) {
 export function formatOverlayText(data) {
   const body = data.body;
   return [
-    `L.Arm ${body["L.Arm"].current}/${body["L.Arm"].max}(${body["L.Arm"].armor}) | Head ${body["Head"].current}/${body["Head"].max}(${body["Head"].armor}) | R.Arm ${body["R.Arm"].current}/${body["R.Arm"].max}(${body["R.Arm"].armor})`,
-    `L.Leg ${body["L.Leg"].current}/${body["L.Leg"].max}(${body["L.Leg"].armor}) | Torso ${body["Torso"].current}/${body["Torso"].max}(${body["Torso"].armor}) | R.Leg ${body["R.Leg"].current}/${body["R.Leg"].max}(${body["R.Leg"].armor})`,
+    `Head ${body.Head.current}/${body.Head.max} | R.Arm ${body["R.Arm"].current}/${body["R.Arm"].max} | L.Arm ${body["L.Arm"].current}/${body["L.Arm"].max}`,
+    `L.Leg ${body["L.Leg"].current}/${body["L.Leg"].max} | Torso ${body.Torso.current}/${body.Torso.max} | R.Leg ${body["R.Leg"].current}/${body["R.Leg"].max}`,
   ].join("\n");
 }
 
@@ -128,11 +152,11 @@ async function getTokenMetrics(token) {
     console.warn("[Body HP] Unable to read token bounds, using fallback size", error);
   }
 
-  let gridDpi = 0;
+  let gridDpi = 150;
   try {
-    gridDpi = await OBR.scene.grid.getDpi();
+    gridDpi = (await OBR.scene.grid.getDpi()) || gridDpi;
   } catch (error) {
-    console.warn("[Body HP] Unable to read grid dpi, using size fallback", error);
+    console.warn("[Body HP] Unable to read grid dpi, using fallback size", error);
   }
 
   const scaleFactor = Math.max(
@@ -140,7 +164,7 @@ async function getTokenMetrics(token) {
     Math.abs(token.scale?.y ?? 1),
     1,
   );
-  const markerSize = Math.max(
+  const visibleDiameter = Math.max(
     width,
     height,
     effectiveSize.width,
@@ -153,166 +177,143 @@ async function getTokenMetrics(token) {
     center,
     width,
     height,
-    markerSize,
+    gridDpi,
+    visibleDiameter,
+    overlayDiameter: visibleDiameter * 1.52,
   };
 }
 
-function getWorldPosition(token, center, offsetX, offsetY) {
-  const radians = ((token.rotation ?? 0) * Math.PI) / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
+function toPolarPoint(radius, angle) {
+  const radians = (angle * Math.PI) / 180;
   return {
-    x: center.x + offsetX * cos - offsetY * sin,
-    y: center.y + offsetX * sin + offsetY * cos,
+    x: SVG_CENTER + radius * Math.cos(radians),
+    y: SVG_CENTER + radius * Math.sin(radians),
   };
 }
 
-function buildOverlayCard(token, data, metrics) {
-  const width = Math.max(360, Math.round(metrics.width * 2.55));
-  const height = 72;
-  const offsetX = metrics.width / 2 + width / 2 + 18;
+function describeSectorPath(startAngle, endAngle) {
+  const outerStart = toPolarPoint(OUTER_RADIUS, startAngle);
+  const outerEnd = toPolarPoint(OUTER_RADIUS, endAngle);
+  const innerEnd = toPolarPoint(INNER_RADIUS, endAngle);
+  const innerStart = toPolarPoint(INNER_RADIUS, startAngle);
+  const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
 
-  return buildLabel()
-    .name(`Body HP: ${getCharacterName(token)}`)
-    .plainText(formatOverlayText(data))
-    .width(width)
-    .height(height)
-    .padding(10)
-    .fontSize(13)
-    .fontWeight(600)
-    .lineHeight(1.18)
-    .textAlign("LEFT")
-    .textAlignVertical("MIDDLE")
-    .fillColor("#f8fafc")
-    .backgroundColor("#020617")
-    .backgroundOpacity(0.58)
-    .strokeColor("#cbd5e1")
-    .strokeOpacity(0.45)
-    .strokeWidth(1)
-    .cornerRadius(12)
-    .pointerDirection("LEFT")
-    .pointerWidth(10)
-    .pointerHeight(12)
-    .position(getWorldPosition(token, metrics.center, offsetX, 0))
+  return [
+    `M ${outerStart.x.toFixed(2)} ${outerStart.y.toFixed(2)}`,
+    `A ${OUTER_RADIUS} ${OUTER_RADIUS} 0 ${largeArcFlag} 1 ${outerEnd.x.toFixed(2)} ${outerEnd.y.toFixed(2)}`,
+    `L ${innerEnd.x.toFixed(2)} ${innerEnd.y.toFixed(2)}`,
+    `A ${INNER_RADIUS} ${INNER_RADIUS} 0 ${largeArcFlag} 0 ${innerStart.x.toFixed(2)} ${innerStart.y.toFixed(2)}`,
+    "Z",
+  ].join(" ");
+}
+
+function getPartColor(part) {
+  if (part.current <= 0 || part.max <= 0) return RING_COLORS.kaputt;
+  if (part.current < part.max) return RING_COLORS.half;
+  return RING_COLORS.full;
+}
+
+function escapeXml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
+function buildRingSvg(data) {
+  const sectors = BODY_RING_LAYOUT.map(({ part, angle }) => {
+    const bodyPart = data.body[part];
+    const path = describeSectorPath(angle - SECTOR_HALF_SPAN, angle + SECTOR_HALF_SPAN);
+    const textPoint = toPolarPoint(TEXT_RADIUS, angle);
+    const label = `${bodyPart.current}/${bodyPart.max}`;
+
+    return `
+      <path
+        d="${path}"
+        fill="${getPartColor(bodyPart)}"
+        stroke="${RING_COLORS.border}"
+        stroke-width="6"
+        stroke-linejoin="round"
+      />
+      <text
+        x="${textPoint.x.toFixed(2)}"
+        y="${textPoint.y.toFixed(2)}"
+        text-anchor="middle"
+        dominant-baseline="middle"
+        font-family="Segoe UI, Arial, sans-serif"
+        font-size="30"
+        font-weight="800"
+        fill="${RING_COLORS.text}"
+        stroke="${RING_COLORS.textStroke}"
+        stroke-width="6"
+        paint-order="stroke"
+      >${escapeXml(label)}</text>
+    `;
+  }).join("");
+
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" width="${SVG_SIZE}" height="${SVG_SIZE}" viewBox="0 0 ${SVG_SIZE} ${SVG_SIZE}">
+      <defs>
+        <filter id="ringShadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="${RING_COLORS.shadow}" />
+        </filter>
+      </defs>
+      <g filter="url(#ringShadow)">
+        ${sectors}
+        <circle
+          cx="${SVG_CENTER}"
+          cy="${SVG_CENTER}"
+          r="${OUTER_RADIUS - 2}"
+          fill="none"
+          stroke="${RING_COLORS.border}"
+          stroke-width="4"
+        />
+        <circle
+          cx="${SVG_CENTER}"
+          cy="${SVG_CENTER}"
+          r="${INNER_RADIUS + 2}"
+          fill="none"
+          stroke="${RING_COLORS.border}"
+          stroke-width="4"
+        />
+      </g>
+    </svg>
+  `.trim();
+}
+
+function buildRingOverlay(token, data, metrics) {
+  const svg = buildRingSvg(data);
+  const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+  const imageDpi = (SVG_SIZE * metrics.gridDpi) / metrics.overlayDiameter;
+
+  return buildImage(
+    {
+      width: SVG_SIZE,
+      height: SVG_SIZE,
+      mime: "image/svg+xml",
+      url: dataUrl,
+    },
+    {
+      offset: { x: 0, y: 0 },
+      dpi: imageDpi,
+    },
+  )
+    .name(`Body Ring: ${getCharacterName(token)}`)
+    .position(metrics.center)
+    .rotation(0)
     .attachedTo(token.id)
+    .disableAttachmentBehavior(["ROTATION"])
     .layer("ATTACHMENT")
     .locked(true)
     .disableHit(true)
-    .metadata({ [OVERLAY_KEY]: token.id, kind: "body-card" })
+    .metadata({ [OVERLAY_KEY]: token.id, kind: "body-ring" })
     .build();
 }
 
-function buildMinorDots(token, data, metrics) {
-  const items = [];
-  const startX = -metrics.markerSize / 2 + 12;
-  const y = metrics.markerSize / 2 - 12;
-
-  for (let index = 0; index < data.minor; index += 1) {
-    items.push(
-      buildShape()
-        .shapeType("CIRCLE")
-        .width(8)
-        .height(8)
-        .position(getWorldPosition(token, metrics.center, startX + index * 10, y))
-        .attachedTo(token.id)
-        .layer("ATTACHMENT")
-        .locked(true)
-        .disableHit(true)
-        .fillColor("#f59e0b")
-        .fillOpacity(0.98)
-        .strokeColor("#111827")
-        .strokeWidth(1)
-        .metadata({ [OVERLAY_KEY]: token.id, kind: "minor", index })
-        .build(),
-    );
-  }
-
-  return items;
-}
-
-function buildSeriousBars(token, data, metrics) {
-  const items = [];
-  const x = metrics.markerSize / 2 - 12;
-  const startY = -metrics.markerSize / 2 + 13;
-
-  for (let index = 0; index < data.serious; index += 1) {
-    items.push(
-      buildShape()
-        .shapeType("RECTANGLE")
-        .width(4)
-        .height(18)
-        .position(getWorldPosition(token, metrics.center, x - index * 8, startY))
-        .attachedTo(token.id)
-        .layer("ATTACHMENT")
-        .locked(true)
-        .disableHit(true)
-        .fillColor("#ef4444")
-        .fillOpacity(0.98)
-        .strokeColor("#111827")
-        .strokeWidth(1)
-        .metadata({ [OVERLAY_KEY]: token.id, kind: "serious", index })
-        .build(),
-    );
-  }
-
-  return items;
-}
-
-export function buildBodyFigure(token, data, metrics) {
-  const parts = [];
-  const spacing = 14;
-
-  const positions = {
-    Head: [0, -spacing * 2],
-    Torso: [0, 0],
-    "L.Arm": [-spacing, 0],
-    "R.Arm": [spacing, 0],
-    "L.Leg": [-spacing / 2, spacing * 2],
-    "R.Leg": [spacing / 2, spacing * 2],
-  };
-
-  for (const partName of BODY_ORDER) {
-    const part = data.body[partName];
-    const [x, y] = positions[partName];
-    const hpRatio = part.max > 0 ? part.current / part.max : 0;
-
-    let color = "#22c55e";
-    if (hpRatio < 0.5) color = "#f59e0b";
-    if (hpRatio < 0.25) color = "#ef4444";
-
-    parts.push(
-      buildShape()
-        .shapeType("RECTANGLE")
-        .width(10)
-        .height(10)
-        .position(getWorldPosition(token, metrics.center, x, y))
-        .attachedTo(token.id)
-        .layer("ATTACHMENT")
-        .locked(true)
-        .disableHit(true)
-        .fillColor(color)
-        .fillOpacity(0.95)
-        .strokeColor("#111")
-        .strokeWidth(1)
-        .metadata({
-          [OVERLAY_KEY]: token.id,
-          kind: "body-part",
-          part: partName,
-        })
-        .build(),
-    );
-  }
-
-  return parts;
-}
-
 export function buildOverlayItems(token, data, metrics) {
-  return [
-    buildOverlayCard(token, data, metrics),
-    ...buildBodyFigure(token, data, metrics),
-    ...buildMinorDots(token, data, metrics),
-    ...buildSeriousBars(token, data, metrics),
-  ];
+  return [buildRingOverlay(token, data, metrics)];
 }
 
 export async function updateTrackerData(tokenId, updater) {

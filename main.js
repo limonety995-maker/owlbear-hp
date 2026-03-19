@@ -3,7 +3,6 @@ import {
   OBR,
   clamp,
   ensureOverlayForToken,
-  formatOverlayText,
   getBodyTotals,
   getCharacterName,
   getTrackerData,
@@ -46,6 +45,14 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function formatBodySummary(data) {
+  return [
+    `Head ${data.body.Head.current}/${data.body.Head.max}`,
+    `R.Arm ${data.body["R.Arm"].current}/${data.body["R.Arm"].max}`,
+    `Torso ${data.body.Torso.current}/${data.body.Torso.max}`,
+  ].join(" • ");
 }
 
 function getCharacters() {
@@ -105,7 +112,6 @@ function renderSelectedToken() {
       }">${tracked ? "Remove Tracking" : "Track Character"}</button>`
     : "";
 
-  const damageDisabled = !tracked || !isEditable() ? "disabled" : "";
   const fieldDisabled = !tracked || !isEditable() ? "disabled" : "";
 
   ui.selectedTokenPanel.innerHTML = `
@@ -129,31 +135,8 @@ function renderSelectedToken() {
           <span class="chip-value">${totals.current}/${totals.max}</span>
         </div>
         <div class="stat-chip">
-          <span class="chip-label">Minor</span>
-          <span class="chip-value">${data.minor}</span>
-        </div>
-        <div class="stat-chip">
-          <span class="chip-label">Serious</span>
-          <span class="chip-value">${data.serious}</span>
-        </div>
-      </div>
-
-      <div class="damage-grid">
-        <div class="damage-card">
-          <div class="field-label">Minor damage dots</div>
-          <div class="stepper">
-            <button type="button" data-action="change-damage" data-kind="minor" data-delta="-1" ${damageDisabled}>-</button>
-            <span>${data.minor}/4</span>
-            <button type="button" data-action="change-damage" data-kind="minor" data-delta="1" ${damageDisabled}>+</button>
-          </div>
-        </div>
-        <div class="damage-card">
-          <div class="field-label">Serious damage bars</div>
-          <div class="stepper">
-            <button type="button" data-action="change-damage" data-kind="serious" data-delta="-1" ${damageDisabled}>-</button>
-            <span>${data.serious}/2</span>
-            <button type="button" data-action="change-damage" data-kind="serious" data-delta="1" ${damageDisabled}>+</button>
-          </div>
+          <span class="chip-label">Overlay</span>
+          <span class="chip-value">${tracked ? "Ring Active" : "Hidden"}</span>
         </div>
       </div>
 
@@ -204,8 +187,10 @@ function renderSelectedToken() {
       </div>
 
       <div class="preview-box">
-        <div class="field-label">Overlay preview</div>
-        <pre>${escapeHtml(formatOverlayText(data))}</pre>
+        <div class="field-label">Ring layout</div>
+        <pre>${escapeHtml(
+          "Top: Head\nUpper Left: L.Arm\nUpper Right: R.Arm\nLower Left: L.Leg\nLower Center: Torso\nLower Right: R.Leg"
+        )}</pre>
       </div>
     </div>`;
 }
@@ -232,7 +217,7 @@ function renderTrackedList() {
             <span>${escapeHtml(getCharacterName(token))}</span>
             <span class="pill hp">${totals.current}/${totals.max}</span>
           </div>
-          <div class="list-item-sub">Minor ${data.minor} - Serious ${data.serious}</div>
+          <div class="list-item-sub">${escapeHtml(formatBodySummary(data))}</div>
         </button>`;
     })
     .join("");
@@ -330,30 +315,6 @@ async function toggleTracking(tokenId) {
       : `Tracking removed for ${getCharacterName(token)}.`,
     "success"
   );
-}
-
-async function changeDamage(kind, delta) {
-  if (!isEditable()) {
-    setStatus("Only the GM can edit damage values.", "error");
-    return;
-  }
-
-  const token = getCharacterById(activeTokenId);
-  if (!token || !isTrackedCharacter(token)) {
-    setStatus("Select a tracked character first.", "error");
-    return;
-  }
-
-  await updateTrackerData(token.id, (current) => ({
-    ...current,
-    [kind]: clamp(
-      (current[kind] ?? 0) + delta,
-      0,
-      kind === "minor" ? 4 : 2
-    ),
-  }));
-  await ensureOverlayForToken(token.id);
-  await syncState();
 }
 
 async function changeBodyField(partName, field, delta) {
@@ -478,14 +439,6 @@ function bindUiEvents() {
     if (action === "focus-token" && activeTokenId) {
       void selectCharacter(activeTokenId).catch((error) => {
         setStatus(error?.message ?? "Unable to focus token.", "error");
-      });
-    }
-
-    if (action === "change-damage") {
-      const kind = actionNode.dataset.kind;
-      if (!kind) return;
-      void changeDamage(kind, delta).catch((error) => {
-        setStatus(error?.message ?? "Unable to update damage.", "error");
       });
     }
 
