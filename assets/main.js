@@ -3923,51 +3923,95 @@ function getEffectiveSize(token) {
     height: (token.height || 140) * scaleY
   };
 }
-function getWorldPosition(token, offsetX, offsetY) {
+async function getTokenMetrics(token) {
+  try {
+    const bounds = await lib_default.scene.items.getItemBounds([token.id]);
+    if (bounds?.width > 0 && bounds?.height > 0) {
+      return {
+        center: bounds.center,
+        width: bounds.width,
+        height: bounds.height
+      };
+    }
+  } catch (error) {
+    console.warn("[Body HP] Unable to read token bounds, using fallback size", error);
+  }
+  return {
+    center: token.position,
+    ...getEffectiveSize(token)
+  };
+}
+function getWorldPosition(token, center, offsetX, offsetY) {
   const radians = (token.rotation ?? 0) * Math.PI / 180;
   const cos = Math.cos(radians);
   const sin = Math.sin(radians);
   return {
-    x: token.position.x + offsetX * cos - offsetY * sin,
-    y: token.position.y + offsetX * sin + offsetY * cos
+    x: center.x + offsetX * cos - offsetY * sin,
+    y: center.y + offsetX * sin + offsetY * cos
   };
 }
-function buildOverlayCard(token, data) {
-  const size = getEffectiveSize(token);
-  const width = Math.max(360, Math.round(size.width * 2.55));
+function buildOverlayCard(token, data, metrics) {
+  const width = Math.max(360, Math.round(metrics.width * 2.55));
   const height = 72;
-  const offsetX = size.width / 2 + width / 2 + 18;
-  return buildLabel().name(`Body HP: ${getCharacterName(token)}`).plainText(formatOverlayText(data)).width(width).height(height).padding(10).fontSize(13).fontWeight(600).lineHeight(1.18).textAlign("LEFT").textAlignVertical("MIDDLE").fillColor("#f8fafc").backgroundColor("#020617").backgroundOpacity(0.58).strokeColor("#cbd5e1").strokeOpacity(0.45).strokeWidth(1).cornerRadius(12).pointerDirection("LEFT").pointerWidth(10).pointerHeight(12).position(getWorldPosition(token, offsetX, 0)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).metadata({ [OVERLAY_KEY]: token.id, kind: "body-card" }).build();
+  const offsetX = metrics.width / 2 + width / 2 + 18;
+  return buildLabel().name(`Body HP: ${getCharacterName(token)}`).plainText(formatOverlayText(data)).width(width).height(height).padding(10).fontSize(13).fontWeight(600).lineHeight(1.18).textAlign("LEFT").textAlignVertical("MIDDLE").fillColor("#f8fafc").backgroundColor("#020617").backgroundOpacity(0.58).strokeColor("#cbd5e1").strokeOpacity(0.45).strokeWidth(1).cornerRadius(12).pointerDirection("LEFT").pointerWidth(10).pointerHeight(12).position(getWorldPosition(token, metrics.center, offsetX, 0)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).metadata({ [OVERLAY_KEY]: token.id, kind: "body-card" }).build();
 }
-function buildMinorDots(token, data) {
+function buildMinorDots(token, data, metrics) {
   const items = [];
-  const size = getEffectiveSize(token);
-  const startX = -size.width / 2 + 12;
-  const y = size.height / 2 - 12;
+  const startX = -metrics.width / 2 + 12;
+  const y = metrics.height / 2 - 12;
   for (let index = 0; index < data.minor; index += 1) {
     items.push(
-      buildShape().shapeType("CIRCLE").width(8).height(8).position(getWorldPosition(token, startX + index * 10, y)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#f59e0b").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).metadata({ [OVERLAY_KEY]: token.id, kind: "minor", index }).build()
+      buildShape().shapeType("CIRCLE").width(8).height(8).position(getWorldPosition(token, metrics.center, startX + index * 10, y)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#f59e0b").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).metadata({ [OVERLAY_KEY]: token.id, kind: "minor", index }).build()
     );
   }
   return items;
 }
-function buildSeriousBars(token, data) {
+function buildSeriousBars(token, data, metrics) {
   const items = [];
-  const size = getEffectiveSize(token);
-  const x = size.width / 2 - 12;
-  const startY = -size.height / 2 + 13;
+  const x = metrics.width / 2 - 12;
+  const startY = -metrics.height / 2 + 13;
   for (let index = 0; index < data.serious; index += 1) {
     items.push(
-      buildShape().shapeType("RECTANGLE").width(4).height(18).position(getWorldPosition(token, x - index * 8, startY)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#ef4444").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).metadata({ [OVERLAY_KEY]: token.id, kind: "serious", index }).build()
+      buildShape().shapeType("RECTANGLE").width(4).height(18).position(getWorldPosition(token, metrics.center, x - index * 8, startY)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#ef4444").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).metadata({ [OVERLAY_KEY]: token.id, kind: "serious", index }).build()
     );
   }
   return items;
 }
-function buildOverlayItems(token, data) {
+function buildBodyFigure(token, data, metrics) {
+  const parts = [];
+  const spacing = 14;
+  const positions = {
+    Head: [0, -spacing * 2],
+    Torso: [0, 0],
+    "L.Arm": [-spacing, 0],
+    "R.Arm": [spacing, 0],
+    "L.Leg": [-spacing / 2, spacing * 2],
+    "R.Leg": [spacing / 2, spacing * 2]
+  };
+  for (const partName of BODY_ORDER) {
+    const part = data.body[partName];
+    const [x, y] = positions[partName];
+    const hpRatio = part.max > 0 ? part.current / part.max : 0;
+    let color = "#22c55e";
+    if (hpRatio < 0.5) color = "#f59e0b";
+    if (hpRatio < 0.25) color = "#ef4444";
+    parts.push(
+      buildShape().shapeType("RECTANGLE").width(10).height(10).position(getWorldPosition(token, metrics.center, x, y)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor(color).fillOpacity(0.95).strokeColor("#111").strokeWidth(1).metadata({
+        [OVERLAY_KEY]: token.id,
+        kind: "body-part",
+        part: partName
+      }).build()
+    );
+  }
+  return parts;
+}
+function buildOverlayItems(token, data, metrics) {
   return [
-    buildOverlayCard(token, data),
-    ...buildMinorDots(token, data),
-    ...buildSeriousBars(token, data)
+    buildOverlayCard(token, data, metrics),
+    ...buildBodyFigure(token, data, metrics),
+    ...buildMinorDots(token, data, metrics),
+    ...buildSeriousBars(token, data, metrics)
   ];
 }
 async function updateTrackerData(tokenId, updater) {
@@ -3975,7 +4019,9 @@ async function updateTrackerData(tokenId, updater) {
     const token = items[0];
     if (!token) return;
     token.metadata ?? (token.metadata = {});
-    token.metadata[META_KEY] = sanitizeTrackerData(updater(getTrackerData(token)));
+    token.metadata[META_KEY] = sanitizeTrackerData(
+      updater(getTrackerData(token))
+    );
   });
 }
 async function removeOverlaysForToken(tokenId, items) {
@@ -3991,11 +4037,17 @@ async function ensureOverlayForToken(tokenId, items) {
   if (!token || !isCharacterToken(token)) return;
   await removeOverlaysForToken(tokenId, sceneItems2);
   if (!isTrackedCharacter(token)) return;
-  await lib_default.scene.items.addItems(buildOverlayItems(token, getTrackerData(token)));
+  const metrics = await getTokenMetrics(token);
+  await lib_default.scene.items.addItems(
+    buildOverlayItems(token, getTrackerData(token), metrics)
+  );
 }
 async function setTrackedState(tokenId, enabled) {
   if (enabled) {
-    await updateTrackerData(tokenId, (current2) => ({ ...current2, enabled: true }));
+    await updateTrackerData(tokenId, (current2) => ({
+      ...current2,
+      enabled: true
+    }));
     await ensureOverlayForToken(tokenId);
     return;
   }

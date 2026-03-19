@@ -111,21 +111,40 @@ function getEffectiveSize(token) {
   };
 }
 
-function getWorldPosition(token, offsetX, offsetY) {
+async function getTokenMetrics(token) {
+  try {
+    const bounds = await OBR.scene.items.getItemBounds([token.id]);
+    if (bounds?.width > 0 && bounds?.height > 0) {
+      return {
+        center: bounds.center,
+        width: bounds.width,
+        height: bounds.height,
+      };
+    }
+  } catch (error) {
+    console.warn("[Body HP] Unable to read token bounds, using fallback size", error);
+  }
+
+  return {
+    center: token.position,
+    ...getEffectiveSize(token),
+  };
+}
+
+function getWorldPosition(token, center, offsetX, offsetY) {
   const radians = ((token.rotation ?? 0) * Math.PI) / 180;
   const cos = Math.cos(radians);
   const sin = Math.sin(radians);
   return {
-    x: token.position.x + offsetX * cos - offsetY * sin,
-    y: token.position.y + offsetX * sin + offsetY * cos,
+    x: center.x + offsetX * cos - offsetY * sin,
+    y: center.y + offsetX * sin + offsetY * cos,
   };
 }
 
-function buildOverlayCard(token, data) {
-  const size = getEffectiveSize(token);
-  const width = Math.max(360, Math.round(size.width * 2.55));
+function buildOverlayCard(token, data, metrics) {
+  const width = Math.max(360, Math.round(metrics.width * 2.55));
   const height = 72;
-  const offsetX = size.width / 2 + width / 2 + 18;
+  const offsetX = metrics.width / 2 + width / 2 + 18;
 
   return buildLabel()
     .name(`Body HP: ${getCharacterName(token)}`)
@@ -148,7 +167,7 @@ function buildOverlayCard(token, data) {
     .pointerDirection("LEFT")
     .pointerWidth(10)
     .pointerHeight(12)
-    .position(getWorldPosition(token, offsetX, 0))
+    .position(getWorldPosition(token, metrics.center, offsetX, 0))
     .attachedTo(token.id)
     .layer("ATTACHMENT")
     .locked(true)
@@ -157,11 +176,10 @@ function buildOverlayCard(token, data) {
     .build();
 }
 
-function buildMinorDots(token, data) {
+function buildMinorDots(token, data, metrics) {
   const items = [];
-  const size = getEffectiveSize(token);
-  const startX = -size.width / 2 + 12;
-  const y = size.height / 2 - 12;
+  const startX = -metrics.width / 2 + 12;
+  const y = metrics.height / 2 - 12;
 
   for (let index = 0; index < data.minor; index += 1) {
     items.push(
@@ -169,7 +187,7 @@ function buildMinorDots(token, data) {
         .shapeType("CIRCLE")
         .width(8)
         .height(8)
-        .position(getWorldPosition(token, startX + index * 10, y))
+        .position(getWorldPosition(token, metrics.center, startX + index * 10, y))
         .attachedTo(token.id)
         .layer("ATTACHMENT")
         .locked(true)
@@ -186,11 +204,10 @@ function buildMinorDots(token, data) {
   return items;
 }
 
-function buildSeriousBars(token, data) {
+function buildSeriousBars(token, data, metrics) {
   const items = [];
-  const size = getEffectiveSize(token);
-  const x = size.width / 2 - 12;
-  const startY = -size.height / 2 + 13;
+  const x = metrics.width / 2 - 12;
+  const startY = -metrics.height / 2 + 13;
 
   for (let index = 0; index < data.serious; index += 1) {
     items.push(
@@ -198,7 +215,7 @@ function buildSeriousBars(token, data) {
         .shapeType("RECTANGLE")
         .width(4)
         .height(18)
-        .position(getWorldPosition(token, x - index * 8, startY))
+        .position(getWorldPosition(token, metrics.center, x - index * 8, startY))
         .attachedTo(token.id)
         .layer("ATTACHMENT")
         .locked(true)
@@ -215,13 +232,8 @@ function buildSeriousBars(token, data) {
   return items;
 }
 
-export function buildBodyFigure(token, data) {
+export function buildBodyFigure(token, data, metrics) {
   const parts = [];
-  const size = getEffectiveSize(token);
-
-  const centerX = 0;
-  const centerY = 0;
-
   const spacing = 14;
 
   const positions = {
@@ -236,11 +248,9 @@ export function buildBodyFigure(token, data) {
   for (const partName of BODY_ORDER) {
     const part = data.body[partName];
     const [x, y] = positions[partName];
+    const hpRatio = part.max > 0 ? part.current / part.max : 0;
 
-    const hpRatio = part.current / part.max;
-
-    // колір по HP
-    let color = "#22c55e"; // зелений
+    let color = "#22c55e";
     if (hpRatio < 0.5) color = "#f59e0b";
     if (hpRatio < 0.25) color = "#ef4444";
 
@@ -249,7 +259,7 @@ export function buildBodyFigure(token, data) {
         .shapeType("RECTANGLE")
         .width(10)
         .height(10)
-        .position(getWorldPosition(token, centerX + x, centerY + y))
+        .position(getWorldPosition(token, metrics.center, x, y))
         .attachedTo(token.id)
         .layer("ATTACHMENT")
         .locked(true)
@@ -270,11 +280,12 @@ export function buildBodyFigure(token, data) {
   return parts;
 }
 
-export function buildOverlayItems(token, data) {
+export function buildOverlayItems(token, data, metrics) {
   return [
-    ...buildBodyFigure(token, data),
-    ...buildMinorDots(token, data),
-    ...buildSeriousBars(token, data),
+    buildOverlayCard(token, data, metrics),
+    ...buildBodyFigure(token, data, metrics),
+    ...buildMinorDots(token, data, metrics),
+    ...buildSeriousBars(token, data, metrics),
   ];
 }
 
@@ -309,8 +320,9 @@ export async function ensureOverlayForToken(tokenId, items) {
 
   if (!isTrackedCharacter(token)) return;
 
+  const metrics = await getTokenMetrics(token);
   await OBR.scene.items.addItems(
-    buildOverlayItems(token, getTrackerData(token)),
+    buildOverlayItems(token, getTrackerData(token), metrics),
   );
 }
 
