@@ -11,7 +11,7 @@
       <header class="topbar">
         <div>
           <h1>Body HP Tracker</h1>
-          <p class="sub">ПКМ по токену → включить/выключить трекер. Потом редактируй значения в списке ниже.</p>
+          <p class="sub">Выбирай токен прямо из списка сцены, включай трекер и редактируй значения здесь.</p>
         </div>
         <div id="roleBadge" class="role-badge">...</div>
       </header>
@@ -25,7 +25,18 @@
       </section>
 
       <section class="panel">
-        <div class="section-title">Отслеживаемые токены</div>
+        <div class="section-head">
+          <div class="section-title">Все токены на сцене</div>
+          <div id="allCount" class="muted">0</div>
+        </div>
+        <div id="allTokensList" class="tokens-list"></div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div class="section-title">Отслеживаемые токены</div>
+          <div id="trackedCount" class="muted">0</div>
+        </div>
         <div id="trackedList" class="tracked-list"></div>
       </section>
 
@@ -59,10 +70,10 @@
       <section class="panel notes">
         <div class="section-title">Как пользоваться</div>
         <ol>
-          <li>Нажми ПКМ по токену.</li>
-          <li>Выбери <b>Toggle Body HP Tracker</b>.</li>
-          <li>Токен появится в списке выше.</li>
-          <li>Нажми на него в списке и меняй значения.</li>
+          <li>В блоке <b>Все токены на сцене</b> нажми <b>Добавить</b> у нужного токена.</li>
+          <li>Токен появится в блоке <b>Отслеживаемые токены</b>.</li>
+          <li>Нажми на него в списке, чтобы открыть редактор.</li>
+          <li>Меняй части тела, броню, minor и serious. Карточка справа от токена обновится.</li>
         </ol>
       </section>
     </div>

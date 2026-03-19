@@ -1,16 +1,8 @@
-import OBR, {
-  buildLabel,
-  buildShape,
-  isImage,
-  isLabel,
-  isShape,
-  isText,
-} from "https://unpkg.com/@owlbear-rodeo/sdk@latest/dist/index.mjs";
+import OBR, { buildLabel, buildShape, isImage, isLabel, isShape, isText } from "https://unpkg.com/@owlbear-rodeo/sdk@latest/dist/index.mjs";
 
 const EXTENSION_ID = "com.openai.body-hp-tracker";
 const META_KEY = `${EXTENSION_ID}/data`;
 const OVERLAY_KEY = `${EXTENSION_ID}/overlayFor`;
-const HEART_ICON = new URL("./heart.svg", import.meta.url).href;
 
 const BODY_ORDER = ["L.Arm", "Head", "R.Arm", "L.Leg", "Torso", "R.Leg"];
 const BODY_DEFAULTS = {
@@ -21,12 +13,20 @@ const BODY_DEFAULTS = {
   Torso: { current: 3, max: 3, armor: 6 },
   "R.Leg": { current: 2, max: 2, armor: 2 },
 };
-const DEFAULT_DATA = { enabled: true, minor: 0, serious: 0, body: structuredClone(BODY_DEFAULTS) };
+const DEFAULT_DATA = {
+  enabled: true,
+  minor: 0,
+  serious: 0,
+  body: JSON.parse(JSON.stringify(BODY_DEFAULTS)),
+};
 
 const ui = {
   roleBadge: document.getElementById("roleBadge"),
   refreshBtn: document.getElementById("refreshBtn"),
   syncBtn: document.getElementById("syncBtn"),
+  allCount: document.getElementById("allCount"),
+  trackedCount: document.getElementById("trackedCount"),
+  allTokensList: document.getElementById("allTokensList"),
   trackedList: document.getElementById("trackedList"),
   statusBox: document.getElementById("statusBox"),
   editor: document.getElementById("editor"),
@@ -37,21 +37,21 @@ const ui = {
 };
 
 let playerRole = "PLAYER";
-let activeTokenId = null;
 let lastSceneItems = [];
-let contextMenuRegistered = false;
-
-function setStatus(message, kind = "info") {
-  if (!ui.statusBox) return;
-  ui.statusBox.textContent = message;
-  ui.statusBox.className = `status ${kind}`;
-  console[kind === "error" ? "error" : "log"](`[Body HP] ${message}`);
-}
+let activeTokenId = null;
 
 function deepClone(v) { return JSON.parse(JSON.stringify(v)); }
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 function isTrackableToken(item) { return item && (isImage(item) || isShape(item) || isText(item) || isLabel(item)); }
-function tokenDisplayName(item) { return item?.name || item?.text?.plainText || `Token ${item?.id?.slice(0, 6) ?? "?"}`; }
+function tokenDisplayName(item) {
+  if (!item) return "—";
+  return item.name || item.text?.plainText || item.plainText || `Token ${item.id.slice(0, 6)}`;
+}
+function setStatus(message, kind = "info") {
+  ui.statusBox.textContent = message;
+  ui.statusBox.className = `status ${kind}`;
+  console[kind === "error" ? "error" : "log"](`[Body HP] ${message}`);
+}
 
 function sanitizeData(raw) {
   const next = deepClone(DEFAULT_DATA);
@@ -61,16 +61,18 @@ function sanitizeData(raw) {
   next.serious = clamp(Number(raw.serious ?? 0) || 0, 0, 2);
   for (const key of BODY_ORDER) {
     const src = raw.body?.[key] ?? {};
-    const base = next.body[key];
-    base.max = clamp(Number(src.max ?? base.max) || base.max, 0, 99);
-    base.current = clamp(Number(src.current ?? base.current) || base.current, 0, base.max);
-    base.armor = clamp(Number(src.armor ?? base.armor) || 0, 0, 99);
+    const part = next.body[key];
+    part.max = clamp(Number(src.max ?? part.max) || part.max, 0, 99);
+    part.current = clamp(Number(src.current ?? part.current) || part.current, 0, part.max);
+    part.armor = clamp(Number(src.armor ?? part.armor) || 0, 0, 99);
   }
   return next;
 }
-
 function getTokenData(item) { return sanitizeData(item?.metadata?.[META_KEY]); }
 function isTracked(item) { return !!item?.metadata?.[META_KEY]?.enabled; }
+function getAllTokens(items = lastSceneItems) { return items.filter(isTrackableToken); }
+function getTrackedTokens(items = lastSceneItems) { return items.filter((item) => isTrackableToken(item) && isTracked(item)); }
+function getTokenById(id) { return lastSceneItems.find((item) => item.id === id) || null; }
 
 function formatOverlayText(data) {
   const b = data.body;
@@ -79,16 +81,14 @@ function formatOverlayText(data) {
     `L.Leg ${b["L.Leg"].current}/${b["L.Leg"].max}(${b["L.Leg"].armor}) | Torso ${b["Torso"].current}/${b["Torso"].max}(${b["Torso"].armor}) | R.Leg ${b["R.Leg"].current}/${b["R.Leg"].max}(${b["R.Leg"].armor})`,
   ].join("\n");
 }
-
 function healthRatio(data) {
-  const totals = BODY_ORDER.reduce((acc, key) => {
+  const total = BODY_ORDER.reduce((acc, key) => {
     acc.current += data.body[key].current;
     acc.max += data.body[key].max;
     return acc;
   }, { current: 0, max: 0 });
-  return totals.max > 0 ? totals.current / totals.max : 0;
+  return total.max > 0 ? total.current / total.max : 0;
 }
-
 function overlayColor(data) {
   const ratio = healthRatio(data);
   if (ratio <= 0.25) return "#7f1d1d";
@@ -150,8 +150,8 @@ function buildSeriousMarks(token, data) {
 }
 
 function buildOverlayLabel(token, data) {
-  const cardWidth = Math.max(360, token.width * 2.6);
-  const offsetX = token.width / 2 + cardWidth / 2 + 16;
+  const cardWidth = Math.max(360, (token.width || 140) * 2.6);
+  const offsetX = (token.width || 140) / 2 + cardWidth / 2 + 16;
   return buildLabel()
     .name(`Body HP: ${tokenDisplayName(token)}`)
     .plainText(formatOverlayText(data))
@@ -181,15 +181,6 @@ function buildOverlayLabel(token, data) {
     .build();
 }
 
-async function updateTokenData(tokenId, updater) {
-  await OBR.scene.items.updateItems([tokenId], (items) => {
-    const token = items[0];
-    if (!token) return;
-    const current = getTokenData(token);
-    token.metadata[META_KEY] = sanitizeData(updater(current));
-  });
-}
-
 async function removeExistingOverlays(tokenId) {
   const attachments = await OBR.scene.items.getItemAttachments([tokenId]);
   const overlayIds = attachments
@@ -211,55 +202,128 @@ async function ensureOverlayForToken(tokenId) {
 }
 
 async function syncTrackedOverlays() {
-  const items = await OBR.scene.items.getItems();
-  lastSceneItems = items;
-  const trackedIds = items.filter((item) => isTracked(item)).map((item) => item.id);
-  for (const id of trackedIds) await ensureOverlayForToken(id);
+  const tracked = getTrackedTokens(await OBR.scene.items.getItems());
+  lastSceneItems = await OBR.scene.items.getItems();
+  for (const token of tracked) await ensureOverlayForToken(token.id);
 }
 
-function getTrackedTokens(items = lastSceneItems) {
-  return items.filter((item) => isTrackableToken(item) && isTracked(item));
+async function updateTokenData(tokenId, updater) {
+  await OBR.scene.items.updateItems([tokenId], (items) => {
+    const token = items[0];
+    if (!token) return;
+    const current = getTokenData(token);
+    token.metadata[META_KEY] = sanitizeData(updater(current));
+  });
 }
 
-function getActiveToken() {
-  return lastSceneItems.find((item) => item.id === activeTokenId) ?? null;
+async function setTracked(tokenId, enabled) {
+  if (playerRole !== "GM") throw new Error("Только GM может включать трекер");
+  const token = getTokenById(tokenId);
+  if (!token) throw new Error("Токен не найден на сцене");
+
+  if (enabled) {
+    await updateTokenData(tokenId, (current) => ({ ...current, enabled: true }));
+    await ensureOverlayForToken(tokenId);
+    activeTokenId = tokenId;
+    setStatus(`Трекер включён: ${tokenDisplayName(token)}.`, "success");
+  } else {
+    await OBR.scene.items.updateItems([tokenId], (items) => {
+      if (!items[0]) return;
+      delete items[0].metadata[META_KEY];
+    });
+    await removeExistingOverlays(tokenId);
+    if (activeTokenId === tokenId) activeTokenId = null;
+    setStatus(`Трекер отключён: ${tokenDisplayName(token)}.`, "success");
+  }
+
+  await refreshAll();
+}
+
+function renderAllTokensList() {
+  const allTokens = getAllTokens();
+  ui.allCount.textContent = String(allTokens.length);
+  if (!allTokens.length) {
+    ui.allTokensList.innerHTML = '<div class="empty">На сцене пока нет подходящих токенов.</div>';
+    return;
+  }
+  ui.allTokensList.innerHTML = "";
+
+  for (const token of allTokens) {
+    const tracked = isTracked(token);
+    const row = document.createElement("div");
+    row.className = `token-row${token.id === activeTokenId ? " active" : ""}`;
+    row.innerHTML = `
+      <div class="token-row-head">
+        <div class="token-row-name">${escapeHtml(tokenDisplayName(token))}</div>
+        <div class="pill ${tracked ? "hp" : "armor"}">${tracked ? "В трекере" : "Обычный"}</div>
+      </div>
+      <div class="token-row-sub">${token.type} · ${token.id.slice(0, 8)}</div>
+      <div class="token-row-actions"></div>`;
+    const actions = row.querySelector(".token-row-actions");
+
+    const focusBtn = document.createElement("button");
+    focusBtn.className = "secondary";
+    focusBtn.textContent = "Выбрать";
+    focusBtn.addEventListener("click", async () => {
+      activeTokenId = token.id;
+      renderAllTokensList();
+      renderTrackedList();
+      renderEditor();
+      try { await OBR.player.select([token.id], true); } catch {}
+      setStatus(`Активен токен: ${tokenDisplayName(token)}.`, "info");
+    });
+    actions.appendChild(focusBtn);
+
+    const toggleBtn = document.createElement("button");
+    toggleBtn.textContent = tracked ? "Убрать" : "Добавить";
+    toggleBtn.className = tracked ? "danger" : "success";
+    toggleBtn.disabled = playerRole !== "GM";
+    toggleBtn.addEventListener("click", () => setTracked(token.id, !tracked).catch((e) => setStatus(e?.message || "Ошибка переключения трекера", "error")));
+    actions.appendChild(toggleBtn);
+
+    ui.allTokensList.appendChild(row);
+  }
 }
 
 function renderTrackedList() {
-  if (!ui.trackedList) return;
   const tracked = getTrackedTokens();
+  ui.trackedCount.textContent = String(tracked.length);
   if (!tracked.length) {
-    ui.trackedList.innerHTML = '<div class="empty">Пока пусто. Добавь токен через ПКМ → Toggle Body HP Tracker.</div>';
-    ui.editor?.classList.add("hidden");
+    ui.trackedList.innerHTML = '<div class="empty">Пока пусто. Нажми «Добавить» у нужного токена выше.</div>';
+    ui.editor.classList.add("hidden");
     return;
   }
-  if (!activeTokenId || !tracked.find((item) => item.id === activeTokenId)) activeTokenId = tracked[0].id;
+  if (!activeTokenId || !tracked.some((token) => token.id === activeTokenId)) activeTokenId = tracked[0].id;
   ui.trackedList.innerHTML = "";
+
   for (const token of tracked) {
     const data = getTokenData(token);
+    const totalCurrent = BODY_ORDER.reduce((sum, key) => sum + data.body[key].current, 0);
+    const totalMax = BODY_ORDER.reduce((sum, key) => sum + data.body[key].max, 0);
     const btn = document.createElement("button");
+    btn.type = "button";
     btn.className = `tracked-item${token.id === activeTokenId ? " active" : ""}`;
     btn.innerHTML = `
       <div class="tracked-item-head">
-        <div class="tracked-item-name">${tokenDisplayName(token)}</div>
-        <div class="pill hp">${BODY_ORDER.reduce((s, key) => s + data.body[key].current, 0)}/${BODY_ORDER.reduce((s, key) => s + data.body[key].max, 0)}</div>
+        <div class="tracked-item-name">${escapeHtml(tokenDisplayName(token))}</div>
+        <div class="pill hp">${totalCurrent}/${totalMax}</div>
       </div>
       <div class="tracked-item-sub">Minor ${data.minor} · Serious ${data.serious}</div>`;
     btn.addEventListener("click", async () => {
       activeTokenId = token.id;
+      renderAllTokensList();
       renderTrackedList();
       renderEditor();
-      await OBR.player.select([token.id], true);
-      setStatus(`Активен токен: ${tokenDisplayName(token)}.`, "success");
+      try { await OBR.player.select([token.id], true); } catch {}
+      setStatus(`Редактирование: ${tokenDisplayName(token)}.`, "success");
     });
     ui.trackedList.appendChild(btn);
   }
 }
 
 function renderEditor() {
-  if (!ui.editor) return;
-  const token = getActiveToken();
-  if (!token) {
+  const token = getTokenById(activeTokenId);
+  if (!token || !isTracked(token)) {
     ui.editor.classList.add("hidden");
     return;
   }
@@ -276,64 +340,33 @@ function renderEditor() {
     card.className = "part-card";
     card.innerHTML = `
       <div class="part-header">
-        <div class="part-title">${key}</div>
-        <div class="row">
+        <div class="part-title">${escapeHtml(key)}</div>
+        <div class="row row-gap">
           <span class="pill hp">HP ${part.current}/${part.max}</span>
           <span class="pill armor">ARM ${part.armor}</span>
         </div>
       </div>
       <div class="field">
         <label>Текущие криты</label>
-        <input type="number" min="0" max="${part.max}" value="${part.current}" data-part="${key}" data-field="current" ${playerRole !== "GM" ? "disabled" : ""}>
+        <input type="number" min="0" max="${part.max}" value="${part.current}" data-part="${escapeHtml(key)}" data-field="current" ${playerRole !== "GM" ? "disabled" : ""}>
       </div>
       <div class="field">
         <label>Макс. криты</label>
-        <input type="number" min="0" max="99" value="${part.max}" data-part="${key}" data-field="max" ${playerRole !== "GM" ? "disabled" : ""}>
+        <input type="number" min="0" max="99" value="${part.max}" data-part="${escapeHtml(key)}" data-field="max" ${playerRole !== "GM" ? "disabled" : ""}>
       </div>
       <div class="field">
         <label>Броня</label>
-        <input type="number" min="0" max="99" value="${part.armor}" data-part="${key}" data-field="armor" ${playerRole !== "GM" ? "disabled" : ""}>
+        <input type="number" min="0" max="99" value="${part.armor}" data-part="${escapeHtml(key)}" data-field="armor" ${playerRole !== "GM" ? "disabled" : ""}>
       </div>`;
     ui.partsGrid.appendChild(card);
   }
 }
 
-async function refreshAll(showToast = false) {
-  lastSceneItems = await OBR.scene.items.getItems();
-  renderTrackedList();
-  renderEditor();
-  if (showToast) setStatus(`Список обновлён. Токенов с трекером: ${getTrackedTokens().length}.`, "success");
-}
-
-async function toggleFromContext(context) {
-  const role = await OBR.player.getRole();
-  if (role !== "GM") return;
-
-  for (const item of context.items) {
-    if (!isTrackableToken(item)) continue;
-    const enabled = isTracked(item);
-    if (enabled) {
-      await OBR.scene.items.updateItems([item.id], (items) => {
-        if (!items[0]) return;
-        delete items[0].metadata[META_KEY];
-      });
-      await removeExistingOverlays(item.id);
-      if (activeTokenId === item.id) activeTokenId = null;
-    } else {
-      await updateTokenData(item.id, (current) => ({ ...current, enabled: true }));
-      await ensureOverlayForToken(item.id);
-      activeTokenId = item.id;
-    }
-  }
-
-  await refreshAll();
-}
-
 async function changeStep(type, delta) {
   try {
     if (playerRole !== "GM") throw new Error("Только GM может менять значения");
-    const token = getActiveToken();
-    if (!token) throw new Error("Нет активного токена");
+    const token = getTokenById(activeTokenId);
+    if (!token || !isTracked(token)) throw new Error("Сначала выбери токен из отслеживаемых");
     await updateTokenData(token.id, (current) => ({
       ...current,
       [type]: clamp((current[type] ?? 0) + delta, 0, type === "minor" ? 4 : 2),
@@ -349,11 +382,12 @@ async function changeStep(type, delta) {
 async function updatePartField(partName, field, value) {
   try {
     if (playerRole !== "GM") throw new Error("Только GM может менять значения");
-    const token = getActiveToken();
-    if (!token) throw new Error("Нет активного токена");
+    const token = getTokenById(activeTokenId);
+    if (!token || !isTracked(token)) throw new Error("Сначала выбери токен из отслеживаемых");
     await updateTokenData(token.id, (current) => {
       const next = deepClone(current);
       const part = next.body[partName];
+      if (!part) return next;
       const number = clamp(Number(value) || 0, 0, 99);
       part[field] = number;
       if (field === "max" || field === "current") part.current = clamp(part.current, 0, part.max);
@@ -367,9 +401,17 @@ async function updatePartField(partName, field, value) {
   }
 }
 
+async function refreshAll(showToast = false) {
+  lastSceneItems = await OBR.scene.items.getItems();
+  renderAllTokensList();
+  renderTrackedList();
+  renderEditor();
+  if (showToast) setStatus(`Список обновлён. Всего токенов: ${getAllTokens().length}, с трекером: ${getTrackedTokens().length}.`, "success");
+}
+
 function bindUiEvents() {
-  ui.refreshBtn?.addEventListener("click", () => refreshAll(true).catch((e) => setStatus(e?.message || "Ошибка обновления", "error")));
-  ui.syncBtn?.addEventListener("click", async () => {
+  ui.refreshBtn.addEventListener("click", () => refreshAll(true).catch((e) => setStatus(e?.message || "Ошибка обновления", "error")));
+  ui.syncBtn.addEventListener("click", async () => {
     try {
       await syncTrackedOverlays();
       await refreshAll();
@@ -385,7 +427,7 @@ function bindUiEvents() {
     });
   });
 
-  ui.partsGrid?.addEventListener("change", async (event) => {
+  ui.partsGrid.addEventListener("change", async (event) => {
     const target = event.target;
     if (!(target instanceof HTMLInputElement)) return;
     const part = target.dataset.part;
@@ -395,41 +437,34 @@ function bindUiEvents() {
   });
 }
 
-function setupContextMenu() {
-  if (contextMenuRegistered) return;
-  contextMenuRegistered = true;
-  OBR.contextMenu.create({
-    id: `${EXTENSION_ID}/toggle`,
-    icons: [{ icon: HEART_ICON, label: "Toggle Body HP Tracker" }],
-    onClick: async (context) => {
-      try {
-        await toggleFromContext(context);
-        setStatus("Трекер переключён через контекстное меню.", "success");
-      } catch (error) {
-        setStatus(error?.message || "Ошибка контекстного меню", "error");
-      }
-    },
-  });
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 OBR.onReady(async () => {
   try {
     playerRole = await OBR.player.getRole();
-    if (ui.roleBadge) ui.roleBadge.textContent = playerRole === "GM" ? "GM" : "PLAYER";
+    ui.roleBadge.textContent = playerRole === "GM" ? "GM" : "PLAYER";
     bindUiEvents();
-    setupContextMenu();
     await refreshAll();
-    setStatus("Расширение загружено. Добавляй токены через ПКМ → Toggle Body HP Tracker.", "info");
+    setStatus("Расширение загружено. Добавь токен из списка сцены, затем редактируй его ниже.", "info");
 
-    OBR.scene.items.onChange(async (items) => {
+    OBR.scene.items.onChange((items) => {
       lastSceneItems = items;
+      renderAllTokensList();
       renderTrackedList();
       renderEditor();
     });
 
     OBR.player.onChange(async () => {
       playerRole = await OBR.player.getRole();
-      if (ui.roleBadge) ui.roleBadge.textContent = playerRole === "GM" ? "GM" : "PLAYER";
+      ui.roleBadge.textContent = playerRole === "GM" ? "GM" : "PLAYER";
+      renderAllTokensList();
       renderEditor();
     });
   } catch (error) {
