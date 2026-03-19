@@ -1,8 +1,4 @@
-import OBR, {
-  buildLabel,
-  buildShape,
-  isImage,
-} from "@owlbear-rodeo/sdk";
+import OBR, { buildLabel, buildShape, isImage } from "@owlbear-rodeo/sdk";
 
 export { OBR };
 
@@ -50,7 +46,7 @@ export function sanitizeTrackerData(raw) {
     part.current = clamp(
       Number(source.current ?? part.current) || part.current,
       0,
-      part.max
+      part.max,
     );
     part.armor = clamp(Number(source.armor ?? part.armor) || part.armor, 0, 99);
   }
@@ -83,7 +79,7 @@ export function getCharacterName(item) {
 
 export function sortCharacters(items) {
   return [...items].sort((left, right) =>
-    getCharacterName(left).localeCompare(getCharacterName(right))
+    getCharacterName(left).localeCompare(getCharacterName(right)),
   );
 }
 
@@ -102,7 +98,7 @@ export function getBodyTotals(data) {
       accumulator.max += data.body[partName].max;
       return accumulator;
     },
-    { current: 0, max: 0 }
+    { current: 0, max: 0 },
   );
 }
 
@@ -183,7 +179,7 @@ function buildMinorDots(token, data) {
         .strokeColor("#111827")
         .strokeWidth(1)
         .metadata({ [OVERLAY_KEY]: token.id, kind: "minor", index })
-        .build()
+        .build(),
     );
   }
 
@@ -212,16 +208,71 @@ function buildSeriousBars(token, data) {
         .strokeColor("#111827")
         .strokeWidth(1)
         .metadata({ [OVERLAY_KEY]: token.id, kind: "serious", index })
-        .build()
+        .build(),
     );
   }
 
   return items;
 }
 
+export function buildBodyFigure(token, data) {
+  const parts = [];
+  const size = getEffectiveSize(token);
+
+  const centerX = 0;
+  const centerY = 0;
+
+  const spacing = 14;
+
+  const positions = {
+    Head: [0, -spacing * 2],
+    Torso: [0, 0],
+    "L.Arm": [-spacing, 0],
+    "R.Arm": [spacing, 0],
+    "L.Leg": [-spacing / 2, spacing * 2],
+    "R.Leg": [spacing / 2, spacing * 2],
+  };
+
+  for (const partName of BODY_ORDER) {
+    const part = data.body[partName];
+    const [x, y] = positions[partName];
+
+    const hpRatio = part.current / part.max;
+
+    // колір по HP
+    let color = "#22c55e"; // зелений
+    if (hpRatio < 0.5) color = "#f59e0b";
+    if (hpRatio < 0.25) color = "#ef4444";
+
+    parts.push(
+      buildShape()
+        .shapeType("RECTANGLE")
+        .width(10)
+        .height(10)
+        .position(getWorldPosition(token, centerX + x, centerY + y))
+        .attachedTo(token.id)
+        .layer("ATTACHMENT")
+        .locked(true)
+        .disableHit(true)
+        .fillColor(color)
+        .fillOpacity(0.95)
+        .strokeColor("#111")
+        .strokeWidth(1)
+        .metadata({
+          [OVERLAY_KEY]: token.id,
+          kind: "body-part",
+          part: partName,
+        })
+        .build(),
+    );
+  }
+
+  return parts;
+}
+
 export function buildOverlayItems(token, data) {
   return [
-    buildOverlayCard(token, data),
+    ...buildBodyFigure(token, data),
     ...buildMinorDots(token, data),
     ...buildSeriousBars(token, data),
   ];
@@ -232,7 +283,9 @@ export async function updateTrackerData(tokenId, updater) {
     const token = items[0];
     if (!token) return;
     token.metadata ??= {};
-    token.metadata[META_KEY] = sanitizeTrackerData(updater(getTrackerData(token)));
+    token.metadata[META_KEY] = sanitizeTrackerData(
+      updater(getTrackerData(token)),
+    );
   });
 }
 
@@ -256,12 +309,17 @@ export async function ensureOverlayForToken(tokenId, items) {
 
   if (!isTrackedCharacter(token)) return;
 
-  await OBR.scene.items.addItems(buildOverlayItems(token, getTrackerData(token)));
+  await OBR.scene.items.addItems(
+    buildOverlayItems(token, getTrackerData(token)),
+  );
 }
 
 export async function setTrackedState(tokenId, enabled) {
   if (enabled) {
-    await updateTrackerData(tokenId, (current) => ({ ...current, enabled: true }));
+    await updateTrackerData(tokenId, (current) => ({
+      ...current,
+      enabled: true,
+    }));
     await ensureOverlayForToken(tokenId);
     return;
   }
