@@ -211,7 +211,6 @@ function buildSeriousBars(token, data) {
         .fillOpacity(0.98)
         .strokeColor("#111827")
         .strokeWidth(1)
-        .cornerRadius(2)
         .metadata({ [OVERLAY_KEY]: token.id, kind: "serious", index })
         .build()
     );

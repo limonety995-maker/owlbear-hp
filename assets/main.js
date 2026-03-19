@@ -3958,7 +3958,7 @@ function buildSeriousBars(token, data) {
   const startY = -size.height / 2 + 13;
   for (let index = 0; index < data.serious; index += 1) {
     items.push(
-      buildShape().shapeType("RECTANGLE").width(4).height(18).position(getWorldPosition(token, x - index * 8, startY)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#ef4444").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).cornerRadius(2).metadata({ [OVERLAY_KEY]: token.id, kind: "serious", index }).build()
+      buildShape().shapeType("RECTANGLE").width(4).height(18).position(getWorldPosition(token, x - index * 8, startY)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#ef4444").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).metadata({ [OVERLAY_KEY]: token.id, kind: "serious", index }).build()
     );
   }
   return items;
