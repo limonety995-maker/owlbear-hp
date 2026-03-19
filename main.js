@@ -378,7 +378,7 @@ function setupContextMenu() {
     id: `${EXTENSION_ID}/toggle`,
     icons: [
       {
-        icon: "/heart.svg",
+        icon: "./heart.svg",
         label: "Toggle Body HP Tracker",
       },
     ],
