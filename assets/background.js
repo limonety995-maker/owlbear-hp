@@ -3794,13 +3794,15 @@ async function getTokenMetrics(token) {
     gridDpi * scaleFactor,
     56
   );
-  const outerRadius = visibleDiameter * 0.78;
-  const outerThickness = Math.max(12, visibleDiameter * 0.12);
-  const outerInnerRadius = outerRadius - outerThickness;
-  const ringGap = Math.max(6, visibleDiameter * 0.035);
-  const torsoOuterRadius = outerInnerRadius - ringGap;
-  const torsoThickness = Math.max(7, visibleDiameter * 0.05);
-  const torsoInnerRadius = torsoOuterRadius - torsoThickness;
+  const tokenRadius = visibleDiameter / 2;
+  const tokenGap = 1;
+  const torsoThickness = Math.max(6, visibleDiameter * 0.04);
+  const torsoInnerRadius = tokenRadius + tokenGap;
+  const torsoOuterRadius = torsoInnerRadius + torsoThickness;
+  const ringGap = 1;
+  const outerThickness = Math.max(10, visibleDiameter * 0.1);
+  const outerInnerRadius = torsoOuterRadius + ringGap;
+  const outerRadius = outerInnerRadius + outerThickness;
   return {
     center,
     visibleDiameter,
