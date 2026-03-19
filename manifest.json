@@ -4,12 +4,12 @@
   "manifest_version": 1,
   "author": "OpenAI",
   "homepage_url": "https://example.com",
-  "icon": "/heart.svg",
-  "background_url": "/index.html",
+  "icon": "heart.svg",
+  "background_url": "index.html",
   "action": {
     "title": "Body HP Tracker",
-    "icon": "/heart.svg",
-    "popover": "/index.html",
+    "icon": "heart.svg",
+    "popover": "index.html",
     "height": 720,
     "width": 460
   }
