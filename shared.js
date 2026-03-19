@@ -9,6 +9,7 @@ export { OBR };
 export const EXTENSION_ID = "com.codex.body-hp";
 export const META_KEY = `${EXTENSION_ID}/data`;
 export const OVERLAY_KEY = `${EXTENSION_ID}/overlayFor`;
+export const OVERLAY_META_KEY = `${EXTENSION_ID}/overlayMeta`;
 export const BODY_ORDER = ["L.Arm", "Head", "R.Arm", "L.Leg", "Torso", "R.Leg"];
 
 export const BODY_DEFAULTS = {
@@ -106,10 +107,28 @@ export function getBodyTotals(data) {
   );
 }
 
+function getOverlayMetadata(tokenId, kind, index = null) {
+  return {
+    [OVERLAY_KEY]: tokenId,
+    [OVERLAY_META_KEY]: {
+      kind,
+      index,
+    },
+  };
+}
+
+function getTokenDimensions(token) {
+  return {
+    width: Math.max(1, Number(token?.width) || 140),
+    height: Math.max(1, Number(token?.height) || 140),
+  };
+}
+
 function buildOverlayCard(token, data) {
-  const width = Math.max(360, Math.round((token.width || 140) * 2.55));
+  const { width: tokenWidth } = getTokenDimensions(token);
+  const width = Math.max(360, Math.round(tokenWidth * 2.55));
   const height = 72;
-  const offsetX = (token.width || 140) / 2 + width / 2 + 18;
+  const offsetX = tokenWidth / 2 + width / 2 + 18;
 
   return buildLabel()
     .name(`Body HP: ${getCharacterName(token)}`)
@@ -137,14 +156,15 @@ function buildOverlayCard(token, data) {
     .layer("ATTACHMENT")
     .locked(true)
     .disableHit(true)
-    .metadata({ [OVERLAY_KEY]: token.id, kind: "body-card" })
+    .metadata(getOverlayMetadata(token.id, "body-card"))
     .build();
 }
 
 function buildMinorDots(token, data) {
   const items = [];
-  const startX = -token.width / 2 + 12;
-  const y = token.height / 2 - 12;
+  const { width, height } = getTokenDimensions(token);
+  const startX = -width / 2 + 12;
+  const y = height / 2 - 12;
 
   for (let index = 0; index < data.minor; index += 1) {
     items.push(
@@ -161,7 +181,7 @@ function buildMinorDots(token, data) {
         .fillOpacity(0.98)
         .strokeColor("#111827")
         .strokeWidth(1)
-        .metadata({ [OVERLAY_KEY]: token.id, kind: "minor", index })
+        .metadata(getOverlayMetadata(token.id, "minor", index))
         .build()
     );
   }
@@ -171,8 +191,9 @@ function buildMinorDots(token, data) {
 
 function buildSeriousBars(token, data) {
   const items = [];
-  const x = token.width / 2 - 12;
-  const startY = -token.height / 2 + 13;
+  const { width, height } = getTokenDimensions(token);
+  const x = width / 2 - 12;
+  const startY = -height / 2 + 13;
 
   for (let index = 0; index < data.serious; index += 1) {
     items.push(
@@ -190,7 +211,7 @@ function buildSeriousBars(token, data) {
         .strokeColor("#111827")
         .strokeWidth(1)
         .cornerRadius(2)
-        .metadata({ [OVERLAY_KEY]: token.id, kind: "serious", index })
+        .metadata(getOverlayMetadata(token.id, "serious", index))
         .build()
     );
   }
@@ -231,11 +252,52 @@ export async function ensureOverlayForToken(tokenId, items) {
   const token = sceneItems.find((item) => item.id === tokenId);
   if (!token || !isCharacterToken(token)) return;
 
-  await removeOverlaysForToken(tokenId, sceneItems);
+  const existingOverlays = sceneItems.filter((item) => item.metadata?.[OVERLAY_KEY] === tokenId);
 
-  if (!isTrackedCharacter(token)) return;
+  if (!isTrackedCharacter(token)) {
+    if (existingOverlays.length) {
+      await OBR.scene.items.deleteItems(existingOverlays.map((item) => item.id));
+    }
+    return;
+  }
 
-  await OBR.scene.items.addItems(buildOverlayItems(token, getTrackerData(token)));
+  const data = getTrackerData(token);
+  const overlaySignature = JSON.stringify(
+    existingOverlays.map((item) => ({
+      kind: item.metadata?.[OVERLAY_META_KEY]?.kind ?? null,
+      index: item.metadata?.[OVERLAY_META_KEY]?.index ?? null,
+      text: typeof item.text?.plainText === "string" ? item.text.plainText : null,
+      width: item.width ?? null,
+      height: item.height ?? null,
+      position: item.position ?? null,
+      attachedTo: item.attachedTo ?? null,
+      name: item.name ?? null,
+    }))
+  );
+
+  const expectedItems = buildOverlayItems(token, data);
+  const expectedSignature = JSON.stringify(
+    expectedItems.map((item) => ({
+      kind: item.metadata?.[OVERLAY_META_KEY]?.kind ?? null,
+      index: item.metadata?.[OVERLAY_META_KEY]?.index ?? null,
+      text: typeof item.text?.plainText === "string" ? item.text.plainText : null,
+      width: item.width ?? null,
+      height: item.height ?? null,
+      position: item.position ?? null,
+      attachedTo: item.attachedTo ?? null,
+      name: item.name ?? null,
+    }))
+  );
+
+  if (existingOverlays.length && overlaySignature === expectedSignature) {
+    return;
+  }
+
+  if (existingOverlays.length) {
+    await OBR.scene.items.deleteItems(existingOverlays.map((item) => item.id));
+  }
+
+  await OBR.scene.items.addItems(expectedItems);
 }
 
 export async function setTrackedState(tokenId, enabled) {
