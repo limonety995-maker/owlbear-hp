@@ -4,12 +4,12 @@
   "manifest_version": 1,
   "description": "Track body part HP, armor, minor damage and serious damage for character tokens.",
   "author": "Codex",
-  "icon": "icon.svg",
-  "background_url": "background.html",
+  "icon": "https://limonety995-maker.github.io/owlbear-hp/icon.svg",
+  "background_url": "https://limonety995-maker.github.io/owlbear-hp/background.html",
   "action": {
     "title": "Body HP",
-    "icon": "icon.svg",
-    "popover": "index.html",
+    "icon": "https://limonety995-maker.github.io/owlbear-hp/icon.svg",
+    "popover": "https://limonety995-maker.github.io/owlbear-hp/index.html",
     "height": 860,
     "width": 560
   }
