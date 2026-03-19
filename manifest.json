@@ -1,13 +1,13 @@
 {
   "name": "Odyssey Crit Traker",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "manifest_version": 1,
   "author": "Michman",
   "homepage_url": "https://limonety995-maker.github.io/owlbear-hp/",
   "icon": "https://limonety995-maker.github.io/owlbear-hp/heart.svg",
   "background_url": "https://limonety995-maker.github.io/owlbear-hp/index.html",
   "action": {
-    "title": "Body HP Tracker",
+    "title": "Odyssey Crit Traker",
     "icon": "https://limonety995-maker.github.io/owlbear-hp/heart.svg",
     "popover": "https://limonety995-maker.github.io/owlbear-hp/index.html",
     "height": 720,
