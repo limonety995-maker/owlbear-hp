@@ -11,7 +11,7 @@
       <header class="topbar">
         <div>
           <h1>Body HP Tracker</h1>
-          <p class="sub">Выдели токен и редактируй повреждения прямо в поповере.</p>
+          <p class="sub">Выдели токен и редактируй повреждения прямо в окне расширения.</p>
         </div>
         <div id="roleBadge" class="role-badge">...</div>
       </header>
@@ -20,8 +20,10 @@
         <div class="row row-gap">
           <button id="registerBtn" class="primary">Включить трекер для выделенного токена</button>
           <button id="removeBtn" class="danger">Убрать трекер</button>
+          <button id="refreshBtn">Обновить выбор</button>
         </div>
         <p id="selectionInfo" class="muted">Нет выбранного токена.</p>
+        <p id="statusBox" class="status info">Готово.</p>
       </section>
 
       <section id="editor" class="panel hidden">
@@ -52,12 +54,11 @@
       </section>
 
       <section class="panel notes">
-        <div class="label">Как это работает</div>
+        <div class="label">Подсказка</div>
         <ul>
-          <li>Справа от токена показывается полупрозрачная карточка по частям тела.</li>
-          <li>Minor damage рисуется точками снизу слева (до 4).</li>
-          <li>Serious damage рисуется палочками сверху справа (до 2).</li>
-          <li>Все значения хранятся в metadata токена.</li>
+          <li>Сначала один раз выдели токен.</li>
+          <li>Потом нажми «Обновить выбор», если окно не подхватило его сразу.</li>
+          <li>После включения трекера справа от токена должна появиться карточка, а на токене — точки и палочки урона.</li>
         </ul>
       </section>
     </div>
