@@ -1,16 +1,16 @@
 {
-  "name": "Odyssey Crit Traker",
-  "version": "0.5.0",
+  "name": "Body HP Tracker",
+  "version": "1.0.0",
   "manifest_version": 1,
-  "author": "Michman",
-  "homepage_url": "https://limonety995-maker.github.io/owlbear-hp/",
-  "icon": "https://limonety995-maker.github.io/owlbear-hp/heart.svg",
-  "background_url": "https://limonety995-maker.github.io/owlbear-hp/index.html",
+  "description": "Track body part HP, armor, minor damage and serious damage for character tokens.",
+  "author": "Codex",
+  "icon": "/icon.svg",
+  "background_url": "/background.html",
   "action": {
-    "title": "Odyssey Crit Traker",
-    "icon": "https://limonety995-maker.github.io/owlbear-hp/heart.svg",
-    "popover": "https://limonety995-maker.github.io/owlbear-hp/index.html",
-    "height": 720,
-    "width": 460
+    "title": "Body HP",
+    "icon": "/icon.svg",
+    "popover": "/index.html",
+    "height": 860,
+    "width": 560
   }
 }
