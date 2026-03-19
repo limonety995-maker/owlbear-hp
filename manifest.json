@@ -1,6 +1,6 @@
 {
   "name": "Body HP Tracker",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "manifest_version": 1,
   "description": "Track body part HP, armor, minor damage and serious damage for character tokens.",
   "author": "Codex",

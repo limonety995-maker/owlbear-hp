@@ -13,7 +13,7 @@ import {
   sortCharacters,
   syncTrackedOverlays,
   updateTrackerData,
-} from "./shared.js";
+} from "./shared.js?v=1.0.1";
 
 const ui = {
   roleBadge: document.getElementById("roleBadge"),
