@@ -6,7 +6,7 @@ import {
   isTrackedCharacter,
   setTrackedState,
   syncTrackedOverlays,
-} from "./shared.js?v=1.0.2";
+} from "./shared.js";
 
 const EXTENSION_MENU_ID = "com.codex.body-hp/context-menu";
 let currentRole = "PLAYER";
@@ -45,12 +45,12 @@ async function toggleTracking(items) {
 async function setupContextMenu() {
   await OBR.contextMenu.create({
     id: EXTENSION_MENU_ID,
-    roles: ["GM"],
     icons: [
       {
         icon: ADD_ICON_URL,
         label: "Track Body HP",
         filter: {
+          roles: ["GM"],
           every: [
             { key: "layer", value: "CHARACTER" },
             { key: ["metadata", META_KEY], value: undefined },
@@ -61,6 +61,7 @@ async function setupContextMenu() {
         icon: REMOVE_ICON_URL,
         label: "Remove Body HP",
         filter: {
+          roles: ["GM"],
           every: [{ key: "layer", value: "CHARACTER" }],
         },
       },

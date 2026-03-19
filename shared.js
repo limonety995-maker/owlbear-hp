@@ -2,7 +2,7 @@ import OBR, {
   buildLabel,
   buildShape,
   isImage,
-} from "https://unpkg.com/@owlbear-rodeo/sdk@3.1.0?module";
+} from "@owlbear-rodeo/sdk";
 
 export { OBR };
 
