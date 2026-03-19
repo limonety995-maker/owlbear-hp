@@ -3687,15 +3687,15 @@ var RING_COLORS = {
   full: "#73FF5A",
   half: "#FFAF22",
   kaputt: "#FF460D",
-  base: "#251105",
-  border: "#1B0B00"
+  base: "#000000",
+  border: "#050505"
 };
 var OUTER_SEGMENTS = [
-  { part: "Head", angle: -90, span: 34 },
-  { part: "R.Arm", angle: -30, span: 34 },
-  { part: "R.Leg", angle: 30, span: 34 },
-  { part: "L.Leg", angle: 150, span: 34 },
-  { part: "L.Arm", angle: 210, span: 34 }
+  { part: "Head", angle: -90, span: 30 },
+  { part: "R.Arm", angle: -18, span: 30 },
+  { part: "R.Leg", angle: 54, span: 30 },
+  { part: "L.Leg", angle: 126, span: 30 },
+  { part: "L.Arm", angle: 198, span: 30 }
 ];
 var BODY_DEFAULTS = {
   "L.Arm": { current: 2, max: 2, armor: 2 },
@@ -3795,11 +3795,11 @@ async function getTokenMetrics(token) {
     56
   );
   const outerRadius = visibleDiameter * 0.78;
-  const outerThickness = Math.max(22, visibleDiameter * 0.22);
+  const outerThickness = Math.max(16, visibleDiameter * 0.16);
   const outerInnerRadius = outerRadius - outerThickness;
-  const ringGap = Math.max(7, visibleDiameter * 0.045);
+  const ringGap = Math.max(6, visibleDiameter * 0.035);
   const torsoOuterRadius = outerInnerRadius - ringGap;
-  const torsoThickness = Math.max(12, visibleDiameter * 0.12);
+  const torsoThickness = Math.max(10, visibleDiameter * 0.075);
   const torsoInnerRadius = torsoOuterRadius - torsoThickness;
   return {
     center,
@@ -3828,11 +3828,13 @@ function arcPoints(radius, startAngle, endAngle, segments = 18) {
 }
 function buildAnnulusCommands(radiusOuter, radiusInner) {
   const outer = arcPoints(radiusOuter, -180, 180, 36);
-  const inner = arcPoints(radiusInner, 180, -180, 36);
+  const inner = arcPoints(radiusInner, -180, 180, 36);
   const commands = [[Command.MOVE, outer[0].x, outer[0].y]];
   for (const point of outer.slice(1)) {
     commands.push([Command.LINE, point.x, point.y]);
   }
+  commands.push([Command.CLOSE]);
+  commands.push([Command.MOVE, inner[0].x, inner[0].y]);
   for (const point of inner) {
     commands.push([Command.LINE, point.x, point.y]);
   }
@@ -3859,8 +3861,8 @@ function getPartColor(part) {
   if (part.current < part.max) return RING_COLORS.half;
   return RING_COLORS.full;
 }
-function buildRingItem(token, metrics, kind, commands, fillColor, zIndex = 0) {
-  return buildPath().name(`${kind}: ${getCharacterName(token)}`).commands(commands).fillColor(fillColor).fillOpacity(1).strokeColor(RING_COLORS.border).strokeOpacity(1).strokeWidth(4).position(metrics.center).rotation(0).zIndex(Date.now() + zIndex).attachedTo(token.id).disableAttachmentBehavior(["ROTATION"]).layer("ATTACHMENT").locked(true).disableHit(true).metadata({
+function buildRingItem(token, metrics, kind, commands, fillColor, zIndex = 0, fillRule = "nonzero") {
+  return buildPath().name(`${kind}: ${getCharacterName(token)}`).commands(commands).fillRule(fillRule).fillColor(fillColor).fillOpacity(1).strokeColor(RING_COLORS.border).strokeOpacity(1).strokeWidth(2).position(metrics.center).rotation(0).zIndex(Date.now() + zIndex).attachedTo(token.id).disableAttachmentBehavior(["ROTATION"]).layer("ATTACHMENT").locked(true).disableHit(true).metadata({
     [OVERLAY_KEY]: token.id,
     kind,
     visualVersion: VISUAL_VERSION
@@ -3875,7 +3877,8 @@ function buildOverlayItems(token, data, metrics) {
       "outer-base",
       buildAnnulusCommands(metrics.outerRadius, metrics.outerInnerRadius),
       RING_COLORS.base,
-      0
+      0,
+      "evenodd"
     )
   );
   for (const segment of OUTER_SEGMENTS) {
@@ -3902,7 +3905,8 @@ function buildOverlayItems(token, data, metrics) {
       "torso-ring",
       buildAnnulusCommands(metrics.torsoOuterRadius, metrics.torsoInnerRadius),
       getPartColor(data.body.Torso),
-      2
+      2,
+      "evenodd"
     )
   );
   return items;
