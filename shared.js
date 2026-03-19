@@ -106,10 +106,30 @@ export function getBodyTotals(data) {
   );
 }
 
+function getEffectiveSize(token) {
+  const scaleX = Math.abs(token.scale?.x ?? 1);
+  const scaleY = Math.abs(token.scale?.y ?? 1);
+  return {
+    width: (token.width || 140) * scaleX,
+    height: (token.height || 140) * scaleY,
+  };
+}
+
+function getWorldPosition(token, offsetX, offsetY) {
+  const radians = ((token.rotation ?? 0) * Math.PI) / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  return {
+    x: token.position.x + offsetX * cos - offsetY * sin,
+    y: token.position.y + offsetX * sin + offsetY * cos,
+  };
+}
+
 function buildOverlayCard(token, data) {
-  const width = Math.max(360, Math.round((token.width || 140) * 2.55));
+  const size = getEffectiveSize(token);
+  const width = Math.max(360, Math.round(size.width * 2.55));
   const height = 72;
-  const offsetX = (token.width || 140) / 2 + width / 2 + 18;
+  const offsetX = size.width / 2 + width / 2 + 18;
 
   return buildLabel()
     .name(`Body HP: ${getCharacterName(token)}`)
@@ -132,7 +152,7 @@ function buildOverlayCard(token, data) {
     .pointerDirection("LEFT")
     .pointerWidth(10)
     .pointerHeight(12)
-    .position({ x: offsetX, y: 0 })
+    .position(getWorldPosition(token, offsetX, 0))
     .attachedTo(token.id)
     .layer("ATTACHMENT")
     .locked(true)
@@ -143,8 +163,9 @@ function buildOverlayCard(token, data) {
 
 function buildMinorDots(token, data) {
   const items = [];
-  const startX = -token.width / 2 + 12;
-  const y = token.height / 2 - 12;
+  const size = getEffectiveSize(token);
+  const startX = -size.width / 2 + 12;
+  const y = size.height / 2 - 12;
 
   for (let index = 0; index < data.minor; index += 1) {
     items.push(
@@ -152,7 +173,7 @@ function buildMinorDots(token, data) {
         .shapeType("CIRCLE")
         .width(8)
         .height(8)
-        .position({ x: startX + index * 10, y })
+        .position(getWorldPosition(token, startX + index * 10, y))
         .attachedTo(token.id)
         .layer("ATTACHMENT")
         .locked(true)
@@ -171,8 +192,9 @@ function buildMinorDots(token, data) {
 
 function buildSeriousBars(token, data) {
   const items = [];
-  const x = token.width / 2 - 12;
-  const startY = -token.height / 2 + 13;
+  const size = getEffectiveSize(token);
+  const x = size.width / 2 - 12;
+  const startY = -size.height / 2 + 13;
 
   for (let index = 0; index < data.serious; index += 1) {
     items.push(
@@ -180,7 +202,7 @@ function buildSeriousBars(token, data) {
         .shapeType("RECTANGLE")
         .width(4)
         .height(18)
-        .position({ x: x - index * 8, y: startY })
+        .position(getWorldPosition(token, x - index * 8, startY))
         .attachedTo(token.id)
         .layer("ATTACHMENT")
         .locked(true)

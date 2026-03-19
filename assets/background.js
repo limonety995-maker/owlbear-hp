@@ -3900,30 +3900,50 @@ function formatOverlayText(data) {
     `L.Leg ${body["L.Leg"].current}/${body["L.Leg"].max}(${body["L.Leg"].armor}) | Torso ${body["Torso"].current}/${body["Torso"].max}(${body["Torso"].armor}) | R.Leg ${body["R.Leg"].current}/${body["R.Leg"].max}(${body["R.Leg"].armor})`
   ].join("\n");
 }
+function getEffectiveSize(token) {
+  const scaleX = Math.abs(token.scale?.x ?? 1);
+  const scaleY = Math.abs(token.scale?.y ?? 1);
+  return {
+    width: (token.width || 140) * scaleX,
+    height: (token.height || 140) * scaleY
+  };
+}
+function getWorldPosition(token, offsetX, offsetY) {
+  const radians = (token.rotation ?? 0) * Math.PI / 180;
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  return {
+    x: token.position.x + offsetX * cos - offsetY * sin,
+    y: token.position.y + offsetX * sin + offsetY * cos
+  };
+}
 function buildOverlayCard(token, data) {
-  const width = Math.max(360, Math.round((token.width || 140) * 2.55));
+  const size = getEffectiveSize(token);
+  const width = Math.max(360, Math.round(size.width * 2.55));
   const height = 72;
-  const offsetX = (token.width || 140) / 2 + width / 2 + 18;
-  return buildLabel().name(`Body HP: ${getCharacterName(token)}`).plainText(formatOverlayText(data)).width(width).height(height).padding(10).fontSize(13).fontWeight(600).lineHeight(1.18).textAlign("LEFT").textAlignVertical("MIDDLE").fillColor("#f8fafc").backgroundColor("#020617").backgroundOpacity(0.58).strokeColor("#cbd5e1").strokeOpacity(0.45).strokeWidth(1).cornerRadius(12).pointerDirection("LEFT").pointerWidth(10).pointerHeight(12).position({ x: offsetX, y: 0 }).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).metadata({ [OVERLAY_KEY]: token.id, kind: "body-card" }).build();
+  const offsetX = size.width / 2 + width / 2 + 18;
+  return buildLabel().name(`Body HP: ${getCharacterName(token)}`).plainText(formatOverlayText(data)).width(width).height(height).padding(10).fontSize(13).fontWeight(600).lineHeight(1.18).textAlign("LEFT").textAlignVertical("MIDDLE").fillColor("#f8fafc").backgroundColor("#020617").backgroundOpacity(0.58).strokeColor("#cbd5e1").strokeOpacity(0.45).strokeWidth(1).cornerRadius(12).pointerDirection("LEFT").pointerWidth(10).pointerHeight(12).position(getWorldPosition(token, offsetX, 0)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).metadata({ [OVERLAY_KEY]: token.id, kind: "body-card" }).build();
 }
 function buildMinorDots(token, data) {
   const items = [];
-  const startX = -token.width / 2 + 12;
-  const y = token.height / 2 - 12;
+  const size = getEffectiveSize(token);
+  const startX = -size.width / 2 + 12;
+  const y = size.height / 2 - 12;
   for (let index = 0; index < data.minor; index += 1) {
     items.push(
-      buildShape().shapeType("CIRCLE").width(8).height(8).position({ x: startX + index * 10, y }).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#f59e0b").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).metadata({ [OVERLAY_KEY]: token.id, kind: "minor", index }).build()
+      buildShape().shapeType("CIRCLE").width(8).height(8).position(getWorldPosition(token, startX + index * 10, y)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#f59e0b").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).metadata({ [OVERLAY_KEY]: token.id, kind: "minor", index }).build()
     );
   }
   return items;
 }
 function buildSeriousBars(token, data) {
   const items = [];
-  const x = token.width / 2 - 12;
-  const startY = -token.height / 2 + 13;
+  const size = getEffectiveSize(token);
+  const x = size.width / 2 - 12;
+  const startY = -size.height / 2 + 13;
   for (let index = 0; index < data.serious; index += 1) {
     items.push(
-      buildShape().shapeType("RECTANGLE").width(4).height(18).position({ x: x - index * 8, y: startY }).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#ef4444").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).cornerRadius(2).metadata({ [OVERLAY_KEY]: token.id, kind: "serious", index }).build()
+      buildShape().shapeType("RECTANGLE").width(4).height(18).position(getWorldPosition(token, x - index * 8, startY)).attachedTo(token.id).layer("ATTACHMENT").locked(true).disableHit(true).fillColor("#ef4444").fillOpacity(0.98).strokeColor("#111827").strokeWidth(1).cornerRadius(2).metadata({ [OVERLAY_KEY]: token.id, kind: "serious", index }).build()
     );
   }
   return items;
