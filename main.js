@@ -525,9 +525,9 @@ OBR.onReady(async () => {
       render();
     });
 
-    OBR.player.onChange(async () => {
-      playerRole = await OBR.player.getRole();
-      selectionIds = (await OBR.player.getSelection()) ?? [];
+    OBR.player.onChange((player) => {
+      playerRole = player.role;
+      selectionIds = player.selection ?? [];
       render();
     });
   } catch (error) {

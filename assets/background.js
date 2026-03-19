@@ -4005,12 +4005,15 @@ async function updateBadge() {
 async function toggleTracking(items) {
   const characters = items.filter(isCharacterToken);
   if (!characters.length) return;
-  const enableTracking = characters.every((item) => !isTrackedCharacter(item));
-  for (const character of characters) {
-    await setTrackedState(character.id, enableTracking);
+  const tracked = characters.filter(isTrackedCharacter);
+  const untracked = characters.filter((item) => !isTrackedCharacter(item));
+  const shouldEnable = untracked.length > 0;
+  const targets = shouldEnable ? untracked : tracked;
+  for (const character of targets) {
+    await setTrackedState(character.id, shouldEnable);
   }
   console.log(
-    `[Body HP] ${enableTracking ? "Tracking" : "Untracking"}: ${characters.map(getCharacterName).join(", ")}`
+    `[Body HP] ${shouldEnable ? "Tracking" : "Untracking"}: ${targets.map(getCharacterName).join(", ")}`
   );
   await updateBadge();
 }
@@ -4023,10 +4026,8 @@ async function setupContextMenu() {
         label: "Track Body HP",
         filter: {
           roles: ["GM"],
-          every: [
-            { key: "layer", value: "CHARACTER" },
-            { key: ["metadata", META_KEY], value: void 0 }
-          ]
+          every: [{ key: "layer", value: "CHARACTER" }],
+          some: [{ key: ["metadata", META_KEY, "enabled"], value: true, operator: "!=" }]
         }
       },
       {
@@ -4034,7 +4035,10 @@ async function setupContextMenu() {
         label: "Remove Body HP",
         filter: {
           roles: ["GM"],
-          every: [{ key: "layer", value: "CHARACTER" }]
+          every: [
+            { key: "layer", value: "CHARACTER" },
+            { key: ["metadata", META_KEY, "enabled"], value: true }
+          ]
         }
       }
     ],

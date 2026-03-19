@@ -4414,9 +4414,9 @@ lib_default.onReady(async () => {
       sceneItems = items;
       render();
     });
-    lib_default.player.onChange(async () => {
-      playerRole = await lib_default.player.getRole();
-      selectionIds = await lib_default.player.getSelection() ?? [];
+    lib_default.player.onChange((player) => {
+      playerRole = player.role;
+      selectionIds = player.selection ?? [];
       render();
     });
   } catch (error) {
